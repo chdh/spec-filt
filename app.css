@@ -1,0 +1,197 @@
+*, *:before, *:after {
+   box-sizing: inherit; }
+
+html {
+   font-size: 15px;
+   box-sizing: border-box; }
+
+body, button, input, select, textarea {
+   font-family: "Source Sans Pro", sans-serif;
+   font-size: inherit;
+   line-height: 1.333334; }
+
+body {
+   margin: 20px; }
+
+H1 {
+   font-size: 24px;
+   font-weight: 600;
+   margin-top: 0;
+   margin-bottom: 15px; }
+
+a {
+   color: #07C;
+   text-decoration: none; }
+a:hover {
+   text-decoration: underline; }
+.pseudoButton,
+.miniPseudoButton {
+   color: #07C;
+   cursor: pointer; }
+.miniPseudoButton {
+   font-size: 13px; }
+
+div.footer {
+   margin-top: 15px;
+   font-size: 13px; }
+
+code,
+.code {
+   font-family: Consolas, monospace; }
+code {
+   background-color: #eff0f1; }
+
+input[type="text"], input[type="number"] {
+   padding: 1px 2px; }
+
+input[type="number"]::-webkit-inner-spin-button {
+   -webkit-appearance: none; }
+input[type="number"] {
+   -moz-appearance: textfield; }
+input[type="text"]:invalid:not(:focus), input[type="number"]:invalid:not(:focus) {
+   box-shadow: 0 0 1px 1px #f00; }
+
+input[type="text"]:focus, input[type="number"]:focus, select:focus, canvas:focus {
+   outline: 1px auto #4D90FE; }
+
+.hidden {
+   display: none !important; }
+
+.parmBlock {
+   margin-top: 20px;
+   margin-bottom: 10px; }
+
+.parmLine {
+   display: flex;
+   align-items: baseline;
+   margin-top: 8px; }
+
+div.parmLine input[type="checkbox"] {
+   margin-left: 0; }
+
+div.parmHeading2 {
+   margin-top: 10px;
+   font-size: 13px;
+   font-weight: bold; }
+
+label[title],
+div[title] {
+   text-decoration: underline dotted #aaa;
+   text-underline-position: under; }
+
+div.actionButtons {
+   display: flex;
+   align-items: center;
+   margin-top: 15px; }
+
+div.actionButtons button {
+   width: 110px;
+   padding: 4px 0px;
+   margin-right: 20px; }
+
+div.actionButtons div {
+   margin-right: 20px; }
+
+div.actionButtons label {
+   margin-right: 5px; }
+
+.miniPseudoButton {
+   color: #07C;
+   cursor: pointer;
+   font-size: 12px; }
+
+.w50r {
+   width: 50px;
+   text-align: right; }
+.w60r {
+   width: 60px;
+   text-align: right; }
+.w80r {
+   width: 80px;
+   text-align: right; }
+.w100r {
+   width: 100px;
+   text-align: right; }
+.w110 {
+   width: 110px; }
+.w120 {
+   width: 120px; }
+.w120g {
+   width: 120px;
+   margin-left: 20px; }
+.w130 {
+   width: 130px; }
+.w130g {
+   width: 130px;
+   margin-left: 20px; }
+.w140r {
+   width: 140px;
+   text-align: right; }
+.w160r {
+   width: 160px;
+   text-align: right; }
+.w200 {
+   width: 200px; }
+.w250r {
+   width: 250px;
+   text-align: right; }
+
+/*--- Function curve viewers and editor --------------------------------------*/
+
+canvas.functionCurveViewer,
+canvas.functionCurveEditor {
+   display: block;
+   width: 100%;
+   height: 100%;
+   touch-action: none; }
+
+#inputSpectrumViewerCanvas,
+#outputSpectrumViewerCanvas {
+   --curve-color0: #6383E2;
+   --curve-width0: 2;
+   --curve-color1: #43CB43; }
+
+div.functionCurveViewerFrame,
+div.functionCurveEditorFrame {
+   margin-top: 15px;
+   border: 1px solid black;
+   width: 1200px;
+   height: 150px;
+   resize: both;
+   overflow: hidden; }
+
+div.spectrumFrame {
+   height: 300px; }
+
+div.miniButtonsBelowViewer {
+   margin-top: 5px;
+   display: flex; }
+
+div.miniButtonsBelow div {
+   margin-right: 10px; }
+
+.helpText {
+   background-color: #FEFAE2;
+   border: 1px solid #F3EED5;
+   padding: 3px;
+   margin-top: 8px;
+   margin-bottom: 20px;
+   width: 450px; }
+
+table.functionCurveViewerHelp,
+table.functionCurveEditorHelp {
+   border-collapse: collapse;
+   width: 100%; }
+
+table.functionCurveViewerHelp td,
+table.functionCurveEditorHelp td {
+   padding: 3px;
+   vertical-align: top;
+   border-bottom: 1px solid #eee; }
+table.functionCurveViewerHelp tr:last-child td,
+table.functionCurveEditorHelp tr:last-child td {
+   border-bottom: none; }
+
+.functionCurveViewerHelpCol1,
+.functionCurveEditorHelpCol1 {
+   width: 50%; }

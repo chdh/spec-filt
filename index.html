@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=922">
+ <link rel="stylesheet" href="fonts.css">
+ <link rel="stylesheet" href="app.css">
+ <script src="app.js"></script>
+ <title>SpecFilt - Spectral Filter Tool</title>
+</head>
+<body>
+
+<script>
+ try {
+    eval("(async function() {})"); }
+  catch (e) {
+    document.write('<p style="color: red; font-size: 20px; font-weight: bold;">Sorry, your web browser is outdated and cannot run this application!</p>'); }
+</script>
+
+<h1>SpecFilt - Spectral Filter Tool</h1>
+
+<div class="functionCurveViewerFrame">
+ <canvas id="inputSignalViewerCanvas" class="functionCurveViewer" tabindex="-1">
+ </canvas>
+</div>
+
+<div class="miniButtonsBelowViewer">
+ <div id="functionCurveViewerHelpButton" class="miniPseudoButton">Help</div>
+</div>
+<div id="functionCurveViewerHelpText" class="hidden helpText"></div>
+
+<div class="actionButtons">
+ <button id="loadLocalAudioFileButton">Load audio file</button>
+ <button id="playInputButton">Play</button>
+ <button id="saveInputWavFileButton">Save WAV file</button>
+ <div id="inputSignalSelectionInfo"></div>
+ <div id="inputSignalSampleRate"></div>
+</div>
+
+<div class="parmBlock">
+ <div class="parmLine">
+  <label class="w130" for="windowFunction" title="Window function to apply before FFT">Window function:</label>
+  <select class="w110" id="windowFunction">
+  </select>
+  <label class="w130g" for="amplitudeScale" title="Amplitude scale for spectrum and filter curve display">Amplitude scale:</label>
+  <select class="w110" id="amplitudeScale">
+   <option value="log">Logarithmic</option>
+   <option value="lin">Linear</option>
+  </select>
+  <label class="w130g" for="averagingWidth" title="Averaging bandwidth for the smoothed spectrum energy curve.">Averag. width [Hz]:</label>
+  <input class="w110" id="averagingWidth" type="number" step="any" required>
+  <label class="w130g" for="maxDisplayFreq" title="Initial maximum frequency for zooming the spectrum display">Max display freq.:</label>
+  <input class="w110" id="maxDisplayFreq" type="text" required>
+ </div>
+</div>
+
+<div class="actionButtons">
+ <button id="fftButton">FFT</button>
+</div>
+
+<div class="functionCurveViewerFrame spectrumFrame">
+ <canvas id="inputSpectrumViewerCanvas" class="functionCurveViewer" tabindex="-1">
+ </canvas>
+</div>
+
+<div class="parmBlock">
+ <div class="parmLine">
+  <label class="w130" for="specProc" title="Spectral processing">Processing:</label>
+  <select class="w110" id="specProc">
+   <option value="filter">Filter amplitudes</option>
+   <!-- <option value="scaleTime">Scale time</option> -->
+   <!-- <option value="transpose">Transpose</option>  -->
+   <option value="phasesRand">Randomize phases</option>
+   <option value="phasesNeg">Negate phases</option>
+   <option value="phasesAlt">Alternate phases</option>
+  </select>
+  <label class="w130g" for="specScalingFactor" title="Spectral scaling factor for time or frequency scaling">Scaling factor:</label>
+  <input class="w110" id="specScalingFactor" type="number" step="any" value="1" required>
+ </div>
+ <div id="filterParms" class="parmLine">
+  <label class="w130" for="filterType">Filter type:</label>
+  <select class="w110" id="filterType">
+   <option value="LP">Low pass</option>
+   <option value="HP">High pass</option>
+   <option value="BP">Band pass</option>
+   <option value="BS">Band stop</option>
+   <option value="curve">Curve</option>
+  </select>
+  <label class="w130g" id="filterFreq1Label" for="filterFreq1">Frequency 1:</label>
+  <input class="w110" id="filterFreq1" type="text" required>
+  <label class="w130g" for="filterFreq2">Frequency 2:</label>
+  <input class="w110" id="filterFreq2" type="text" required>
+  <label class="w130g" for="filterSmoothingWidth" title="The distance between the start of the smoothing and the -6dB point.">Smoothing [Hz]:</label>
+  <input class="w110" id="filterSmoothingWidth" type="number" step="any" required>
+ </div>
+</div>
+
+<div id="filterParms2">
+
+ <div id="filterViewerFrame" class="functionCurveViewerFrame spectrumFrame">
+  <canvas id="filterViewerCanvas" class="functionCurveViewer" tabindex="-1">
+  </canvas>
+ </div>
+
+ <div id="filterEditorFrame" class="functionCurveEditorFrame spectrumFrame">
+  <canvas id="filterEditorCanvas" class="functionCurveEditor" tabindex="-1">
+  </canvas>
+ </div>
+
+</div>
+
+<div class="miniButtonsBelowViewer" id="filterEditorButtons">
+ <div id="functionCurveEditorHelpButton" class="miniPseudoButton">Help</div>
+</div>
+<div id="functionCurveEditorHelpText" class="hidden helpText"></div>
+
+<div class="actionButtons">
+ <button id="filterButton">Process</button>
+ <button id="filterAndPlayButton">Process + Play</button>
+</div>
+
+<div class="functionCurveViewerFrame spectrumFrame">
+ <canvas id="outputSpectrumViewerCanvas" class="functionCurveViewer" tabindex="-1">
+ </canvas>
+</div>
+
+<div class="parmBlock">
+ <div class="parmLine">
+  <label class="w130" for="outputSampleRate" title="Sample rate for synthesizing the output signal">Sample rate:</label>
+  <input class="w110" id="outputSampleRate" type="text" required>
+  <label class="w130g" for="outpusStretchFactor" title="Factor to stretch (if &gt; 1) or squeeze (if &lt; 1) the output signal">Stretch factor:</label>
+  <input class="w110" id="outputStretchFactor" type="number" step="any" value="1" required>
+ </div>
+</div>
+
+<div class="actionButtons">
+ <button id="ifftButton">Inverse FFT</button>
+</div>
+
+<div class="functionCurveViewerFrame">
+ <canvas id="outputSignalViewerCanvas" class="functionCurveViewer" tabindex="-1">
+ </canvas>
+</div>
+
+<div class="actionButtons">
+ <button id="playOutputButton">Play</button>
+ <button id="saveOutputWavFileButton">Save WAV file</button>
+</div>
+
+<div class="footer">
+ Source code: <a href="https://github.com/chdh/spec-filt">Github</a>,
+ Author: Christian d'Heureuse (chdh@inventec.ch)
+</div>
+</body>
+</html>
