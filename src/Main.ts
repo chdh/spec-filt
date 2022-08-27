@@ -272,7 +272,7 @@ function updateFilterEditorWidget() {
 
 function refreshFilterGui() {
    const filterType = DomUtils.getValue("filterType");
-   const isBand = filterType == "bp" || filterType == "bs";
+   const isBand = filterType == "BP" || filterType == "BS";
    const isCurve = filterType == "curve";
    DomUtils.showElement("filterFreq1", !isCurve);
    DomUtils.showElement("filterFreq2", isBand);
