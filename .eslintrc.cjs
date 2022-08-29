@@ -5,14 +5,9 @@ const namingOptions = [
       format: ["camelCase"],
       leadingUnderscore: "allow" },
   {
-      selector: "variable",
-      modifiers: ["const"],
-      format: ["camelCase", "UPPER_CASE"],
-      leadingUnderscore: "allow" },
-  {
       selector: "function",
-      filter: "^[a-z].*_",                                 // allow function names with "_"
-      format: null },
+      format: null,
+      custom: {regex: "^[a-z]\\w*$", match: true} },
   {
       selector: "typeLike",
       format: ["PascalCase"] }];
@@ -78,11 +73,15 @@ const rules = {
    "@typescript-eslint/restrict-plus-operands": "off",
    "@typescript-eslint/restrict-template-expressions": "off",
    "no-var": "off",                                     // @typescript-eslint/recommended switches this on
+
+   // Filename-rules plugin rules:
+   "filename-rules/match": ["error", /^[A-Z]/ ]
    };
 
 module.exports = {
    plugins: [
-      "@typescript-eslint" ],
+      "@typescript-eslint",
+      "filename-rules" ],
    parser: "@typescript-eslint/parser",
    parserOptions: {
       project: "./tsconfig.json",

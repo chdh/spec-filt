@@ -462,7 +462,8 @@ function functionCurveEditorHelpButton_click() {
 async function processUrlParameters() {
    const parmsString = window.location.hash.substring(1);
    const usp = new URLSearchParams(parmsString);
-   const audioFileUrl = usp.get("file");
+   const defaultAudioFile = (window.location.protocol != "file:") ? "testSound1.wav" : undefined;
+   const audioFileUrl = usp.get("file") ?? defaultAudioFile;
    if (audioFileUrl) {
       await loadAudioFileFromUrl(audioFileUrl); }}
 
