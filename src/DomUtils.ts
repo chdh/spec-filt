@@ -15,13 +15,20 @@ export function getInputElement (elementOrId: HTMLInputElement | string) : HTMLI
 
 // Shows or hides a DOM element.
 // If the element is an input element with an associated label element, the label element is also affected.
-export function showElement (elementOrId: HTMLInputElement | string, visible = true) {
+export function showElement (elementOrId: HTMLElement | string, visible = true) {
    const e = getElement(elementOrId);
    e.classList.toggle("hidden", !visible);
    const labels = (<HTMLInputElement>e).labels;
    if (labels) {
       for (const labelElement of labels) {
          labelElement.classList.toggle("hidden", !visible); }}}
+
+export function isElementVisible (elementOrId: HTMLElement | string) : boolean {
+   const e = getElement(elementOrId);
+   return !e.classList.contains("hidden"); }
+
+export function enableElement (elementOrId: HTMLInputElement | string, enabled = true) {
+   getInputElement(elementOrId).disabled = !enabled; }
 
 function getInputElementLabelText (e: HTMLInputElement) : string {
    let s = (e.labels && e.labels.length > 0) ? e.labels[0].textContent ?? "" : "";
@@ -47,14 +54,14 @@ export function getValue (elementOrId: HTMLInputElement | string) : string {
 export function setValue (elementOrId: HTMLInputElement | string, newValue: string) {
    getInputElement(elementOrId).value = newValue; }
 
-export function setText (elementOrId: HTMLInputElement | string, text: string) {
-   getInputElement(elementOrId).textContent = text; }
+export function setText (elementOrId: HTMLElement | string, text: string) {
+   getElement(elementOrId).textContent = text; }
 
 export function getValueNumOpt (elementOrId: HTMLInputElement | string) : number | undefined {
    const e = getInputElement(elementOrId);
    checkValidity(e);
    if (e.value == "") {
-      return; }
+      return undefined; }
    if (e.type == "number") {
       return e.valueAsNumber; }
    const v = decodeNumber(e.value);
@@ -124,6 +131,12 @@ export function setClass (elementOrId: HTMLInputElement | string, className: str
    const e = getElement(elementOrId);
    e.classList.toggle(className, enable); }
 
-export function addChangeEventListener (elementOrId: HTMLInputElement | string, listener: EventListener) {
+export function addEventListener (elementOrId: HTMLElement | string, eventType: string, listener: Function, ...args: any[]) {
    const e = getElement(elementOrId);
-   e.addEventListener("change", (event: Event) => void catchError(listener, event)); }
+   e.addEventListener(eventType, (event: Event) => void catchError(listener, event, ...args)); }
+
+export function addChangeEventListener (elementOrId: HTMLElement | string, listener: Function, ...args: any[]) {
+   addEventListener(elementOrId, "change", listener, ...args); }
+
+export function addClickEventListener (elementOrId: HTMLElement | string, listener: Function, ...args: any[]) {
+   addEventListener(elementOrId, "click", listener, ...args); }

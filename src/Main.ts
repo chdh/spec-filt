@@ -1,5 +1,5 @@
 import * as Utils from "./Utils.js";
-import {catchError, formatNumber} from "./Utils.js";
+import {catchError, formatNumber, AsyncCallGate} from "./Utils.js";
 import InternalAudioPlayer from "./InternalAudioPlayer.js";
 import * as DomUtils from "./DomUtils.js";
 import * as AudioUtils from "./AudioUtils.js";
@@ -18,17 +18,6 @@ import ComplexArray from "dsp-collection/math/ComplexArray.js";
 var audioPlayer:                       InternalAudioPlayer;
 
 // GUI components:
-var loadLocalAudioFileButton:          HTMLButtonElement;
-var playInputButton:                   HTMLButtonElement;
-var saveInputWavFileButton:            HTMLButtonElement;
-var fftButton:                         HTMLButtonElement;
-var filterButton:                      HTMLButtonElement;
-var filterAndPlayButton:               HTMLButtonElement;
-var ifftButton:                        HTMLButtonElement;
-var playOutputButton:                  HTMLButtonElement;
-var saveOutputWavFileButton:           HTMLButtonElement;
-var functionCurveViewerHelpButton:     HTMLDivElement;
-var functionCurveEditorHelpButton:     HTMLDivElement;
 var inputSignalViewerCanvas:           HTMLCanvasElement;
 var inputSpectrumViewerCanvas:         HTMLCanvasElement;
 var filterViewerCanvas:                HTMLCanvasElement;
@@ -59,6 +48,7 @@ var inputSpectrumScalingFactor:        number;
 
 // Filter:
 var filterEditorWidgetKnotsAreLog:     boolean = false;
+var filterEditorWidgetLoaded:          boolean = false;
 
 // Output spectrum:
 var outputSpectrumValid:               boolean = false;
@@ -100,7 +90,7 @@ function inputSignalViewer_segmentChange() {
       inputSignalStart = 0;
       inputSignalEnd = inputSignal.length; }
    setInputSignalInfo();
-   refreshGui(); }
+   refreshMainGui(); }
 
 //--- Spectrum viewers ---------------------------------------------------------
 
@@ -149,7 +139,7 @@ async function loadAudioFileData (fileData: ArrayBuffer, fileName: string) {
    inputSpectrumValid = false;
    outputSpectrumValid = false;
    outputSignalValid = false;
-   refreshGui(); }
+   refreshMainGui(); }
 
 async function loadFileFromUrl (url: string) : Promise<ArrayBuffer> {
    const response = await fetch(url, {mode: "cors", credentials: "include"}); // (server must send "Access-Control-Allow-Origin" header field or have same origin)
@@ -196,9 +186,9 @@ function fftButton_click() {
    loadInputSpectrumViewer();
    outputSpectrumValid = false;
    outputSignalValid = false;
-   refreshGui(); }
+   updateSpectralProcessing(); }
 
-//--- Filter -------------------------------------------------------------------
+//--- Spectral processing ------------------------------------------------------
 
 function genFilterCurveFunction() : FilterCurveFunction {
    const filterType = DomUtils.getValue("filterType");
@@ -240,8 +230,10 @@ function loadFilterCurveViewer() {
       focusShield:     true };
    filterViewerWidget.setViewerState(viewerState); }
 
-function updateFilterEditorWidget() {
+function updateFilterEditorWidget (reset: boolean) {
    const scaleIsLog = DomUtils.getValue("amplitudeScale") == "log";
+   if (!reset && filterEditorWidgetLoaded && scaleIsLog == filterEditorWidgetKnotsAreLog) {
+      return; }
    const oldKnots = filterEditorWidget.getEditorState().knots;
    let knots: FunctionCurveEditor.Point[];
    if (oldKnots.length == 0) {
@@ -267,8 +259,7 @@ function updateFilterEditorWidget() {
       focusShield:     true };
    filterEditorWidget.setEditorState(editorState);
    filterEditorWidgetKnotsAreLog = scaleIsLog;
-   // filterEditorWidget.addEventListener("change", () => console.log("Change event"));
-   }
+   filterEditorWidgetLoaded = true; }
 
 function refreshFilterGui() {
    const filterType = DomUtils.getValue("filterType");
@@ -279,10 +270,11 @@ function refreshFilterGui() {
    DomUtils.showElement("filterSmoothingWidth", !isCurve);
    DomUtils.setText("filterFreq1Label", isBand ? "Frequency 1:" : "Frequency:");
    DomUtils.showElement("filterViewerFrame", !isCurve);
+   const filterEditorWasAlreadyVisible = DomUtils.isElementVisible("filterEditorFrame");
    DomUtils.showElement("filterEditorFrame", isCurve);
    DomUtils.showElement("filterEditorButtons", isCurve);
    if (isCurve) {
-      updateFilterEditorWidget(); }
+      updateFilterEditorWidget(!filterEditorWasAlreadyVisible); }
     else {
       loadFilterCurveViewer(); }}
 
@@ -354,17 +346,18 @@ function performSpectralProcessing() {
          throw new Error("Unsupported specProc code."); }}
    outputSpectrumValid = true; }
 
-function filterButton_click() {
-   performSpectralProcessing();
-   loadOutputSpectrumViewer();
-   outputSignalValid = false;
-   refreshGui(); }
+function updateSpectralProcessing() {
+   refreshFilterGui();
+   if (inputSpectrumValid) {
+      performSpectralProcessing();
+      loadOutputSpectrumViewer();
+      outputSignalValid = false; }
+   refreshMainGui(); }
 
-async function filterAndPlayButton_click() {
-   audioPlayer.stop();
-   filterButton_click();
-   ifftButton_click();
-   await playOutputButton_click(); }
+const updateSpectralProcessingCallGate = new AsyncCallGate();
+
+function updateSpectralProcessingAsync() {
+   updateSpectralProcessingCallGate.call(updateSpectralProcessing); }
 
 //--- IFFT ---------------------------------------------------------------------
 
@@ -380,7 +373,14 @@ function ifftButton_click() {
    outputFileName = Utils.removeFileNameExtension(inputFileName) + "-filtered.wav";
    outputSignalValid = true;
    loadSignalViewer(outputSignalViewerWidget, outputSignal, outputSampleRate);
-   refreshGui(); }
+   refreshMainGui(); }
+
+async function ifftAndPlayButton_click() {
+   if (audioPlayer.isPlaying()) {
+      audioPlayer.stop();
+      return; }
+   ifftButton_click();
+   await playOutputButton_click(); }
 
 //------------------------------------------------------------------------------
 
@@ -403,23 +403,23 @@ function refreshSpectrumAndFilterDisplay() {
    if (!outputSpectrumViewerWidget.disabled) {
       loadOutputSpectrumViewer(); }}
 
-function refreshGui() {
+function refreshMainGui() {
    const playButtonText = audioPlayer.isPlaying() ? "Stop" : "Play";
-   inputSignalViewerWidget.disabled    = !inputSignalValid;
-   inputSpectrumViewerWidget.disabled  = !inputSpectrumValid;
+   inputSignalViewerWidget.disabled = !inputSignalValid;
+   inputSpectrumViewerWidget.disabled = !inputSpectrumValid;
    outputSpectrumViewerWidget.disabled = !outputSpectrumValid;
-   outputSignalViewerWidget.disabled   = !outputSignalValid;
+   outputSignalViewerWidget.disabled = !outputSignalValid;
    const inputSignalAvailable = !!inputSignalValid && inputSignalEnd > inputSignalStart;
-   playInputButton.disabled = !inputSignalAvailable;
-   playInputButton.textContent = playButtonText;
-   saveInputWavFileButton.disabled = !inputSignalAvailable;
-   fftButton.disabled = !inputSignalAvailable;
-   filterButton.disabled = !inputSpectrumValid;
-   filterAndPlayButton.disabled = !inputSpectrumValid;
-   ifftButton.disabled = !outputSpectrumValid;
-   playOutputButton.disabled = !outputSignalValid;
-   playOutputButton.textContent = playButtonText;
-   saveOutputWavFileButton.disabled = !outputSignalValid;
+   DomUtils.enableElement("playInputButton", inputSignalAvailable);
+   DomUtils.setText("playInputButton", playButtonText);
+   DomUtils.enableElement("saveInputWavFileButton", inputSignalAvailable);
+   DomUtils.enableElement("fftButton", inputSignalAvailable);
+   DomUtils.enableElement("ifftButton", outputSpectrumValid);
+   DomUtils.enableElement("ifftAndPlayButton", outputSpectrumValid);
+   DomUtils.setText("ifftAndPlayButton", audioPlayer.isPlaying() ? "Stop" : "iFFT + Play");
+   DomUtils.enableElement("playOutputButton", outputSignalValid);
+   DomUtils.setText("playOutputButton", playButtonText);
+   DomUtils.enableElement("saveOutputWavFileButton", outputSignalValid);
    const specProc = DomUtils.getValue("specProc");
    DomUtils.showElement("filterParms", specProc == "filter");
    DomUtils.showElement("filterParms2", specProc == "filter");
@@ -469,25 +469,14 @@ async function processUrlParameters() {
 
 async function startup() {
    audioPlayer = new InternalAudioPlayer();
-   audioPlayer.addEventListener("stateChange", refreshGui);
-   loadLocalAudioFileButton      = <HTMLButtonElement>document.getElementById("loadLocalAudioFileButton")!;
-   playInputButton               = <HTMLButtonElement>document.getElementById("playInputButton")!;
-   saveInputWavFileButton        = <HTMLButtonElement>document.getElementById("saveInputWavFileButton")!;
-   fftButton                     = <HTMLButtonElement>document.getElementById("fftButton")!;
-   filterButton                  = <HTMLButtonElement>document.getElementById("filterButton")!;
-   filterAndPlayButton           = <HTMLButtonElement>document.getElementById("filterAndPlayButton")!;
-   ifftButton                    = <HTMLButtonElement>document.getElementById("ifftButton")!;
-   playOutputButton              = <HTMLButtonElement>document.getElementById("playOutputButton")!;
-   saveOutputWavFileButton       = <HTMLButtonElement>document.getElementById("saveOutputWavFileButton")!;
-   functionCurveViewerHelpButton = <HTMLDivElement>document.getElementById("functionCurveViewerHelpButton")!;
-   functionCurveEditorHelpButton = <HTMLDivElement>document.getElementById("functionCurveEditorHelpButton")!;
-   inputSignalViewerCanvas       = <HTMLCanvasElement>document.getElementById("inputSignalViewerCanvas")!;
-   inputSpectrumViewerCanvas     = <HTMLCanvasElement>document.getElementById("inputSpectrumViewerCanvas")!;
-   filterViewerCanvas            = <HTMLCanvasElement>document.getElementById("filterViewerCanvas")!;
-   filterEditorCanvas            = <HTMLCanvasElement>document.getElementById("filterEditorCanvas")!;
-   outputSpectrumViewerCanvas    = <HTMLCanvasElement>document.getElementById("outputSpectrumViewerCanvas")!;
-   outputSignalViewerCanvas      = <HTMLCanvasElement>document.getElementById("outputSignalViewerCanvas")!;
-   windowFunctionSelect          = <HTMLSelectElement>document.getElementById("windowFunction")!;
+   audioPlayer.addEventListener("stateChange", refreshMainGui);
+   inputSignalViewerCanvas    = <HTMLCanvasElement>document.getElementById("inputSignalViewerCanvas")!;
+   inputSpectrumViewerCanvas  = <HTMLCanvasElement>document.getElementById("inputSpectrumViewerCanvas")!;
+   filterViewerCanvas         = <HTMLCanvasElement>document.getElementById("filterViewerCanvas")!;
+   filterEditorCanvas         = <HTMLCanvasElement>document.getElementById("filterEditorCanvas")!;
+   outputSpectrumViewerCanvas = <HTMLCanvasElement>document.getElementById("outputSpectrumViewerCanvas")!;
+   outputSignalViewerCanvas   = <HTMLCanvasElement>document.getElementById("outputSignalViewerCanvas")!;
+   windowFunctionSelect       = <HTMLSelectElement>document.getElementById("windowFunction")!;
    inputSignalViewerWidget    = new FunctionCurveViewer.Widget(inputSignalViewerCanvas);
    inputSpectrumViewerWidget  = new FunctionCurveViewer.Widget(inputSpectrumViewerCanvas);
    filterViewerWidget         = new FunctionCurveViewer.Widget(filterViewerCanvas);
@@ -497,26 +486,26 @@ async function startup() {
    for (const d of WindowFunctions.windowFunctionIndex) {
       const selected = d.id == "rect";
       windowFunctionSelect.add(new Option(d.name, d.id, selected, selected)); }
-   loadLocalAudioFileButton.     addEventListener("click", () => catchError(loadLocalAudioFileButton_click));
-   playInputButton.              addEventListener("click", () => catchError(playInputButton_click));
-   saveInputWavFileButton.       addEventListener("click", () => catchError(saveInputWavFileButton_click));
-   fftButton.                    addEventListener("click", () => catchError(fftButton_click));
-   filterButton.                 addEventListener("click", () => catchError(filterButton_click));
-   filterAndPlayButton.          addEventListener("click", () => catchError(filterAndPlayButton_click));
-   ifftButton.                   addEventListener("click", () => catchError(ifftButton_click));
-   playOutputButton.             addEventListener("click", () => catchError(playOutputButton_click));
-   saveOutputWavFileButton.      addEventListener("click", () => catchError(saveOutputWavFileButton_click));
-   functionCurveViewerHelpButton.addEventListener("click", () => catchError(functionCurveViewerHelpButton_click));
-   functionCurveEditorHelpButton.addEventListener("click", () => catchError(functionCurveEditorHelpButton_click));
-   inputSignalViewerWidget.      addEventListener("segmentchange", () => catchError(inputSignalViewer_segmentChange));
+   DomUtils.addClickEventListener("loadLocalAudioFileButton", loadLocalAudioFileButton_click);
+   DomUtils.addClickEventListener("playInputButton", playInputButton_click);
+   DomUtils.addClickEventListener("saveInputWavFileButton", saveInputWavFileButton_click);
+   DomUtils.addClickEventListener("fftButton", fftButton_click);
+   DomUtils.addClickEventListener("ifftButton", ifftButton_click);
+   DomUtils.addClickEventListener("ifftAndPlayButton", ifftAndPlayButton_click);
+   DomUtils.addClickEventListener("playOutputButton", playOutputButton_click);
+   DomUtils.addClickEventListener("saveOutputWavFileButton", saveOutputWavFileButton_click);
+   DomUtils.addClickEventListener("functionCurveViewerHelpButton", functionCurveViewerHelpButton_click);
+   DomUtils.addClickEventListener("functionCurveEditorHelpButton", functionCurveEditorHelpButton_click);
+   inputSignalViewerWidget.addEventListener("segmentchange", () => catchError(inputSignalViewer_segmentChange));
    DomUtils.addChangeEventListener("amplitudeScale", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("averagingWidth", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("maxDisplayFreq", refreshSpectrumAndFilterDisplay);
-   DomUtils.addChangeEventListener("specProc", refreshGui);
-   DomUtils.addChangeEventListener("filterType", refreshFilterGui);
-   DomUtils.addChangeEventListener("filterFreq1", loadFilterCurveViewer);
-   DomUtils.addChangeEventListener("filterFreq2", loadFilterCurveViewer);
-   DomUtils.addChangeEventListener("filterSmoothingWidth", loadFilterCurveViewer);
+   DomUtils.addChangeEventListener("specProc", updateSpectralProcessing);
+   DomUtils.addChangeEventListener("filterType", updateSpectralProcessing);
+   DomUtils.addChangeEventListener("filterFreq1", updateSpectralProcessing);
+   DomUtils.addChangeEventListener("filterFreq2", updateSpectralProcessing);
+   DomUtils.addChangeEventListener("filterSmoothingWidth", updateSpectralProcessing);
+   filterEditorWidget.addEventListener("change", () => catchError(updateSpectralProcessingAsync));
    DomUtils.restoreValueNum("averagingWidth", 100);
    DomUtils.restoreValueNum("maxDisplayFreq", 5500);
    DomUtils.restoreValueNum("filterFreq1", 1000);
@@ -535,6 +524,6 @@ async function startup() {
    DomUtils.addNumericFieldFormatSwitcher("outputSampleRate");
    refreshFilterGui();
    await processUrlParameters();
-   refreshGui(); }
+   refreshMainGui(); }
 
 document.addEventListener("DOMContentLoaded", () => catchError(startup));

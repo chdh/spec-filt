@@ -94,3 +94,13 @@ export function removeFileNameExtension (s: string) : string {
 export function getFileNameExtension (s: string) : string | undefined {
    const p = s.lastIndexOf(".");
    return (p > 0) ? s.substring(p + 1) : undefined; }
+
+export class AsyncCallGate {
+   private pending: boolean = false;
+   public call (f: Function) {
+      if (this.pending) {
+         return; }
+      this.pending = true;
+      nextTick(() => {
+         this.pending = false;
+         f(); }); }}
