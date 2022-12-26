@@ -18,23 +18,16 @@ import ComplexArray from "dsp-collection/math/ComplexArray.js";
 var audioPlayer:                       InternalAudioPlayer;
 
 // GUI components:
-var inputSignalViewerCanvas:           HTMLCanvasElement;
-var inputSpectrumViewerCanvas:         HTMLCanvasElement;
-var filterViewerCanvas:                HTMLCanvasElement;
-var filterEditorCanvas:                HTMLCanvasElement;
-var outputSpectrumViewerCanvas:        HTMLCanvasElement;
-var outputSignalViewerCanvas:          HTMLCanvasElement;
 var inputSignalViewerWidget:           FunctionCurveViewer.Widget;
 var inputSpectrumViewerWidget:         FunctionCurveViewer.Widget;
 var filterViewerWidget:                FunctionCurveViewer.Widget;
 var filterEditorWidget:                FunctionCurveEditor.Widget;
 var outputSpectrumViewerWidget:        FunctionCurveViewer.Widget;
 var outputSignalViewerWidget:          FunctionCurveViewer.Widget;
-var windowFunctionSelect:              HTMLSelectElement;
 
 // Input signal:
 var inputSignalValid:                  boolean = false;
-var inputSignal:                       Float64Array;                 // input signal samples
+var inputSignal:                       Float32Array;                 // input signal samples
 var inputSignalStart:                  number;                       // sample position of start of selected segment
 var inputSignalEnd:                    number;                       // sample position of end of selected segment
 var inputSampleRate:                   number;
@@ -64,7 +57,7 @@ var outputFileName:                    string;
 
 //--- Signal viewers -----------------------------------------------------------
 
-function loadSignalViewer (widget: FunctionCurveViewer.Widget, signal: Float64Array, sampleRate: number) {
+function loadSignalViewer (widget: FunctionCurveViewer.Widget, signal: ArrayLike<number>, sampleRate: number) {
    const viewerFunction = FunctionCurveViewer.createViewerFunctionForArray(signal, {scalingFactor: sampleRate});
    const yRange = 1.2;
    const viewerState : Partial<FunctionCurveViewer.ViewerState> = {
@@ -127,11 +120,11 @@ function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float
 //--- Load audio file ----------------------------------------------------------
 
 async function loadAudioFileData (fileData: ArrayBuffer, fileName: string) {
-   const audioBuffer = await AudioUtils.decodeAudioFileData(fileData);
-   inputSignal = new Float64Array(audioBuffer.getChannelData(0));   // only the first channel is used
+   const audioData = await AudioUtils.decodeAudioFileData(fileData);
+   inputSignal = audioData.channelData[0];                 // only the first channel is used
    inputSignalStart = 0;
    inputSignalEnd = inputSignal.length;
-   inputSampleRate = audioBuffer.sampleRate;
+   inputSampleRate = audioData.sampleRate;
    inputFileName = fileName;
    inputSignalValid = true;
    loadSignalViewer(inputSignalViewerWidget, inputSignal, inputSampleRate);
@@ -157,6 +150,7 @@ async function loadLocalAudioFile (file: File) {
    await loadAudioFileData(fileData, file.name); }
 
 function loadLocalAudioFileButton_click() {
+   audioPlayer.stop();
    Utils.openFileOpenDialog((file: File) => catchError(loadLocalAudioFile, file)); }
 
 function getInputSignalSelection() {
@@ -176,7 +170,7 @@ function fftButton_click() {
       console.log(`Note: The input signal length is reduced from ${inputSignalLen} to ${inputSignalLen - 1} to make it even and thus allowing faster FFT processing.`);
       inputSignalLen--; }
    const inputSignalSel = inputSignal.subarray(inputSignalStart, inputSignalStart + inputSignalLen);
-   const windowFunctionId = windowFunctionSelect.value;
+   const windowFunctionId = DomUtils.getValue("windowFunction");
    const windowedSignal = (windowFunctionId == "rect") ? inputSignalSel : WindowFunctions.applyWindowById(inputSignalSel, windowFunctionId);
    const spectrum = Fft.fftRealSpectrum(windowedSignal);
    inputSpectrumAmplitudes = spectrum.getAbsArray();
@@ -425,7 +419,7 @@ function refreshMainGui() {
    DomUtils.showElement("filterParms2", specProc == "filter");
    DomUtils.showElement("specScalingFactor", specProc == "scaleTime" || specProc == "transpose"); }
 
-async function genericPlayButton_click (signal: Float64Array, sampleRate: number) {
+async function genericPlayButton_click (signal: ArrayLike<number>, sampleRate: number) {
    if (audioPlayer.isPlaying()) {
       audioPlayer.stop();
       return; }
@@ -437,7 +431,7 @@ async function playInputButton_click() {
 async function playOutputButton_click() {
    await genericPlayButton_click(outputSignal, outputSampleRate); }
 
-function saveWavFile (signal: Float64Array, sampleRate: number, fileName: string) {
+function saveWavFile (signal: ArrayLike<number>, sampleRate: number, fileName: string) {
    audioPlayer.stop();
    const wavFileData = WavFileEncoder.encodeWavFile2([signal], sampleRate, WavFileEncoder.WavFileType.float32);
    Utils.openSaveAsDialog(wavFileData, fileName, "audio/wav", "wav", "WAV audio file"); }
@@ -470,19 +464,19 @@ async function processUrlParameters() {
 async function startup() {
    audioPlayer = new InternalAudioPlayer();
    audioPlayer.addEventListener("stateChange", refreshMainGui);
-   inputSignalViewerCanvas    = <HTMLCanvasElement>document.getElementById("inputSignalViewerCanvas")!;
-   inputSpectrumViewerCanvas  = <HTMLCanvasElement>document.getElementById("inputSpectrumViewerCanvas")!;
-   filterViewerCanvas         = <HTMLCanvasElement>document.getElementById("filterViewerCanvas")!;
-   filterEditorCanvas         = <HTMLCanvasElement>document.getElementById("filterEditorCanvas")!;
-   outputSpectrumViewerCanvas = <HTMLCanvasElement>document.getElementById("outputSpectrumViewerCanvas")!;
-   outputSignalViewerCanvas   = <HTMLCanvasElement>document.getElementById("outputSignalViewerCanvas")!;
-   windowFunctionSelect       = <HTMLSelectElement>document.getElementById("windowFunction")!;
+   const inputSignalViewerCanvas    = <HTMLCanvasElement>document.getElementById("inputSignalViewerCanvas")!;
+   const inputSpectrumViewerCanvas  = <HTMLCanvasElement>document.getElementById("inputSpectrumViewerCanvas")!;
+   const filterViewerCanvas         = <HTMLCanvasElement>document.getElementById("filterViewerCanvas")!;
+   const filterEditorCanvas         = <HTMLCanvasElement>document.getElementById("filterEditorCanvas")!;
+   const outputSpectrumViewerCanvas = <HTMLCanvasElement>document.getElementById("outputSpectrumViewerCanvas")!;
+   const outputSignalViewerCanvas   = <HTMLCanvasElement>document.getElementById("outputSignalViewerCanvas")!;
    inputSignalViewerWidget    = new FunctionCurveViewer.Widget(inputSignalViewerCanvas);
    inputSpectrumViewerWidget  = new FunctionCurveViewer.Widget(inputSpectrumViewerCanvas);
    filterViewerWidget         = new FunctionCurveViewer.Widget(filterViewerCanvas);
    filterEditorWidget         = new FunctionCurveEditor.Widget(filterEditorCanvas);
    outputSpectrumViewerWidget = new FunctionCurveViewer.Widget(outputSpectrumViewerCanvas);
    outputSignalViewerWidget   = new FunctionCurveViewer.Widget(outputSignalViewerCanvas);
+   const windowFunctionSelect = <HTMLSelectElement>document.getElementById("windowFunction")!;
    for (const d of WindowFunctions.windowFunctionIndex) {
       const selected = d.id == "rect";
       windowFunctionSelect.add(new Option(d.name, d.id, selected, selected)); }

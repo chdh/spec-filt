@@ -19,7 +19,7 @@
 
 <h1>SpecFilt - Spectral Filter Tool</h1>
 
-<div class="functionCurveViewerFrame">
+<div class="functionCurveViewerFrame canvasFrame">
  <canvas id="inputSignalViewerCanvas" class="functionCurveViewer" tabindex="-1">
  </canvas>
 </div>
@@ -58,7 +58,7 @@
  <button id="fftButton">FFT</button>
 </div>
 
-<div class="functionCurveViewerFrame spectrumFrame">
+<div class="functionCurveViewerFrame spectrumFrame canvasFrame">
  <canvas id="inputSpectrumViewerCanvas" class="functionCurveViewer" tabindex="-1">
  </canvas>
 </div>
@@ -97,12 +97,12 @@
 
 <div id="filterParms2">
 
- <div id="filterViewerFrame" class="functionCurveViewerFrame spectrumFrame">
+ <div id="filterViewerFrame" class="functionCurveViewerFrame spectrumFrame canvasFrame">
   <canvas id="filterViewerCanvas" class="functionCurveViewer" tabindex="-1">
   </canvas>
  </div>
 
- <div id="filterEditorFrame" class="functionCurveEditorFrame spectrumFrame">
+ <div id="filterEditorFrame" class="functionCurveEditorFrame spectrumFrame canvasFrame">
   <canvas id="filterEditorCanvas" class="functionCurveEditor" tabindex="-1">
   </canvas>
  </div>
@@ -114,7 +114,7 @@
 </div>
 <div id="functionCurveEditorHelpText" class="hidden helpText"></div>
 
-<div class="functionCurveViewerFrame spectrumFrame">
+<div class="functionCurveViewerFrame spectrumFrame canvasFrame">
  <canvas id="outputSpectrumViewerCanvas" class="functionCurveViewer" tabindex="-1">
  </canvas>
 </div>
@@ -133,7 +133,7 @@
  <button id="ifftAndPlayButton">iFFT + Play</button>
 </div>
 
-<div class="functionCurveViewerFrame">
+<div class="functionCurveViewerFrame canvasFrame">
  <canvas id="outputSignalViewerCanvas" class="functionCurveViewer" tabindex="-1">
  </canvas>
 </div>

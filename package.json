@@ -8,6 +8,7 @@
       "dsp-collection": "^0.2.4",
       "function-curve-editor": "^1.0.14",
       "function-curve-viewer": "^1.0.26",
+      "wav-file-decoder": "^1.0.1",
       "wav-file-encoder": "^1.0.2"
    }
 }
