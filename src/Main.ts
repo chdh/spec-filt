@@ -1,19 +1,20 @@
-import * as Utils from "./Utils.js";
-import {catchError, formatNumber, AsyncCallGate} from "./Utils.js";
+import * as Utils from "./Utils.ts";
+import {catchError, formatNumber, AsyncCallGate} from "./Utils.ts";
 import InternalAudioPlayer from "./InternalAudioPlayer.js";
-import * as DomUtils from "./DomUtils.js";
-import * as AudioUtils from "./AudioUtils.js";
+import * as DomUtils from "./DomUtils.ts";
+import * as AudioUtils from "./AudioUtils.ts";
 import * as WavFileEncoder from "wav-file-encoder";
+import * as DialogManager from "dialog-manager";
 import * as FunctionCurveViewer from "function-curve-viewer";
 import * as FunctionCurveEditor from "function-curve-editor";
-import * as WindowFunctions from "dsp-collection/signal/WindowFunctions.js";
-import * as Fft from "dsp-collection/signal/Fft.js";
-// import * as Resampling from "dsp-collection/signal/Resampling.js";
-import * as DspUtils from "dsp-collection/utils/DspUtils.js";
-import * as MathUtils from "dsp-collection/math/MathUtils.js";
-import * as SpecFilt from "dsp-collection/filter/SpecFilt.js";
-import {FilterCurveFunction} from "dsp-collection/filter/SpecFilt.js";
-import ComplexArray from "dsp-collection/math/ComplexArray.js";
+import * as WindowFunctions from "dsp-collection/signal/WindowFunctions";
+import * as Fft from "dsp-collection/signal/Fft";
+// import * as Resampling from "dsp-collection/signal/Resampling";
+import * as DspUtils from "dsp-collection/utils/DspUtils";
+import * as MathUtils from "dsp-collection/math/MathUtils";
+import * as SpecFilt from "dsp-collection/filter/SpecFilt";
+import {FilterCurveFunction} from "dsp-collection/filter/SpecFilt";
+import ComplexArray from "dsp-collection/math/ComplexArray";
 
 var audioPlayer:                       InternalAudioPlayer;
 
@@ -85,6 +86,132 @@ function inputSignalViewer_segmentChange() {
    setInputSignalInfo();
    refreshMainGui(); }
 
+//--- Spectrum averaging -------------------------------------------------------
+
+// SMA linear - Simple moving average over the linear spectral pressure amplitude values.
+function createSpectrumAverage_smaLin (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
+   if (averagingWidth < 2) {
+      return undefined; }
+   const averagedSpectrum = MathUtils.simpleMovingAverage(spectrum, averagingWidth);
+   return averagedSpectrum.map(DspUtils.convertAmplitudeToDb); }
+
+// SMA power - Simple moving average over the linear spectral power values.
+function createSpectrumAverage_smaPow (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
+   if (averagingWidth < 2) {
+      return undefined; }
+   const spectrumSqr = spectrum.map(x => x * x);
+   const averagedSpectrumSqr = MathUtils.simpleMovingAverage(spectrumSqr, averagingWidth);
+   return averagedSpectrumSqr.map(DspUtils.convertPowerToDb); }
+
+// SMA log - Simple moving average over the logarithmic spectral amplitude values.
+function createSpectrumAverage_smaLog (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
+   if (averagingWidth < 2) {
+      return undefined; }
+   const spectrumLog = spectrum.map(DspUtils.convertAmplitudeToDb);
+   return MathUtils.simpleMovingAverage(spectrumLog, averagingWidth); }
+
+// TMA linear - Triangular moving average over the linear spectral pressure amplitude values.
+function createSpectrumAverage_tmaLin (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
+   if (averagingWidth < 4) {
+      return undefined; }
+   const averagedSpectrum = MathUtils.triangularMovingAverage(spectrum, averagingWidth);
+   return averagedSpectrum.map(DspUtils.convertAmplitudeToDb); }
+
+// TMA power - Triangular moving average over the linear spectral power values.
+function createSpectrumAverage_tmaPow (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
+   if (averagingWidth < 4) {
+      return undefined; }
+   const spectrumSqr = spectrum.map(x => x * x);
+   const averagedSpectrumSqr = MathUtils.triangularMovingAverage(spectrumSqr, averagingWidth);
+   return averagedSpectrumSqr.map(DspUtils.convertPowerToDb); }
+
+// TMA log - Triangular moving average over the logarithmic spectral amplitude values.
+function createSpectrumAverage_tmaLog (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
+   if (averagingWidth < 4) {
+      return undefined; }
+   const spectrumLog = spectrum.map(DspUtils.convertAmplitudeToDb);
+   return MathUtils.triangularMovingAverage(spectrumLog, averagingWidth); }
+
+// SMA power + 2x SMA log.
+function createSpectrumAverage_smaPowLog2 (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
+   if (averagingWidth < 8) {
+      return undefined; }
+   const spectrumSqr = spectrum.map(x => x * x);                                                   // power values
+   const averagedSpectrumSqr = MathUtils.simpleMovingAverage(spectrumSqr, averagingWidth);         // first SMA (power values)
+   const specLog1 = averagedSpectrumSqr.map(DspUtils.convertPowerToDb);                            // convert to log
+   const averagingWidth2 = Math.round(averagingWidth / 2);
+// const averagingWidth2 = Math.round(averagingWidth / 2 / Math.sqrt(2));
+   const specLog2 = MathUtils.simpleMovingAverage(specLog1, averagingWidth2);                      // second SMA (log values)
+   const averagingWidth3 = Math.round(averagingWidth2 / 2);
+// const averagingWidth3 = averagingWidth2;
+   return MathUtils.simpleMovingAverage(specLog2, averagingWidth3); }                              // third SMA (log values)
+
+function createSpectrumAverage (spectrum: Float64Array, scalingFactor: number) : Float64Array | undefined {
+   const averagingMode = DomUtils.getValue("averagingMode");
+   const averagingWidth = Math.round(DomUtils.getValueNum("averagingWidth") * scalingFactor);
+   switch (averagingMode) {
+      case "smaLin":     return createSpectrumAverage_smaLin(spectrum, averagingWidth);
+      case "smaPow":     return createSpectrumAverage_smaPow(spectrum, averagingWidth);
+      case "smaLog":     return createSpectrumAverage_smaLog(spectrum, averagingWidth);
+      case "tmaLin":     return createSpectrumAverage_tmaLin(spectrum, averagingWidth);
+      case "tmaPow":     return createSpectrumAverage_tmaPow(spectrum, averagingWidth);
+      case "tmaLog":     return createSpectrumAverage_tmaLog(spectrum, averagingWidth);
+      case "smaPowLog2": return createSpectrumAverage_smaPowLog2(spectrum, averagingWidth);
+      default:           return undefined; }}
+
+function createSpectrumAveragingFunction (spectrum: Float64Array, scaleIsLog: boolean, scalingFactor: number) : FunctionCurveViewer.ViewerFunction | undefined {
+   const avgSpectrumLog = createSpectrumAverage(spectrum, scalingFactor);
+   if (!avgSpectrumLog) {
+      return undefined; }
+   const out = scaleIsLog ? avgSpectrumLog : avgSpectrumLog.map(DspUtils.convertDbToAmplitude);
+   return FunctionCurveViewer.createViewerFunctionForArray(out, {scalingFactor, nearestNeighbor: true, average: true}); }
+
+//--- Curve to clipboard -------------------------------------------------------
+
+interface Point {x: number; y: number}
+
+function formatCoordinateValue (v: number) {
+   let s = String(v);
+   if (s.length > 6) {
+      s = v.toFixed(2); }
+   return s; }
+
+function encodeCoordinateList (points: Point[]) : string {
+   let s: string = "";
+   for (const point of points) {
+      if (s.length > 0) {
+         s += ", "; }
+      s += "[" + formatCoordinateValue(point.x) + ", " + formatCoordinateValue(point.y) + "]"; }
+   return s; }
+
+function getAvgSpectrumPoints (spectrum: Float64Array, scalingFactor: number, stepWidth: number, maxFreq: number) {
+   const points: Point[] = [];
+   points.push({x: 0, y: -125});
+   points.push({x: 1, y: -124});
+   points.push({x: 2, y: -123});
+   for (let x = stepWidth; x < maxFreq; x += stepWidth) {
+      const i = Math.round(x * scalingFactor);
+      if (i <= 0 || i >= spectrum.length) {
+         continue; }
+      const y = spectrum[i];
+      points.push({x, y}); }
+   const endFreq = (Math.floor(maxFreq / stepWidth) + 1) * stepWidth;
+   points.push({x: endFreq + 0, y: -123});
+   points.push({x: endFreq + 1, y: -124});
+   points.push({x: endFreq + 2, y: -125});
+   return points; }
+
+async function copySpectrumButton_click() {
+   const stepWidth = DomUtils.getValueNum("copySpectrumStepWidth");
+   const maxFreq = DomUtils.getValueNum("maxDisplayFreq");
+   const avgSpectrumLog = createSpectrumAverage(inputSpectrumAmplitudes, inputSpectrumScalingFactor);
+   if (!avgSpectrumLog) {
+      throw new Error("No average spectrum."); }
+   const points = getAvgSpectrumPoints(avgSpectrumLog, inputSpectrumScalingFactor, stepWidth, maxFreq);
+   const s = encodeCoordinateList(points);
+   await navigator.clipboard.writeText(s);
+   DialogManager.showToast({msgText: "Spectrum curve copied to clipboard."}); }
+
 //--- Spectrum viewers ---------------------------------------------------------
 
 // Load spectrum amplitude viewer.
@@ -92,12 +219,7 @@ function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float
    const scaleIsLog = DomUtils.getValue("amplitudeScale") == "log";
    const spectrum2 = scaleIsLog ? spectrum.map(DspUtils.convertAmplitudeToDb) : spectrum;
    const spectrumFunction = FunctionCurveViewer.createViewerFunctionForArray(spectrum2, {scalingFactor, nearestNeighbor: true});
-   const averagingWidth = Math.round(DomUtils.getValueNum("averagingWidth") * scalingFactor);
-   let averagingFunction: FunctionCurveViewer.ViewerFunction | undefined = undefined;
-   if (averagingWidth >= 2) {
-      const averagedSpectrum = MathUtils.movingAverage(spectrum, averagingWidth);
-      const averagedSpectrum2 = scaleIsLog ? averagedSpectrum.map(DspUtils.convertAmplitudeToDb) : averagedSpectrum;
-      averagingFunction = FunctionCurveViewer.createViewerFunctionForArray(averagedSpectrum2, {scalingFactor, nearestNeighbor: true, average: true}); }
+   const averagingFunction = createSpectrumAveragingFunction(spectrum, scaleIsLog, scalingFactor);
    const viewerFunction = (x: number, sampleWidth: number, channel: number) => {
       switch (channel) {
          case 0:  return averagingFunction ? averagingFunction(x, sampleWidth, 0) : undefined;
@@ -408,6 +530,7 @@ function refreshMainGui() {
    DomUtils.setText("playInputButton", playButtonText);
    DomUtils.enableElement("saveInputWavFileButton", inputSignalAvailable);
    DomUtils.enableElement("fftButton", inputSignalAvailable);
+   DomUtils.enableElement("copySpectrumButton", inputSpectrumValid);
    DomUtils.enableElement("ifftButton", outputSpectrumValid);
    DomUtils.enableElement("ifftAndPlayButton", outputSpectrumValid);
    DomUtils.setText("ifftAndPlayButton", audioPlayer.isPlaying() ? "Stop" : "iFFT + Play");
@@ -484,6 +607,7 @@ async function startup() {
    DomUtils.addClickEventListener("playInputButton", playInputButton_click);
    DomUtils.addClickEventListener("saveInputWavFileButton", saveInputWavFileButton_click);
    DomUtils.addClickEventListener("fftButton", fftButton_click);
+   DomUtils.addClickEventListener("copySpectrumButton", copySpectrumButton_click);
    DomUtils.addClickEventListener("ifftButton", ifftButton_click);
    DomUtils.addClickEventListener("ifftAndPlayButton", ifftAndPlayButton_click);
    DomUtils.addClickEventListener("playOutputButton", playOutputButton_click);
@@ -492,26 +616,27 @@ async function startup() {
    DomUtils.addClickEventListener("functionCurveEditorHelpButton", functionCurveEditorHelpButton_click);
    inputSignalViewerWidget.addEventListener("segmentchange", () => catchError(inputSignalViewer_segmentChange));
    DomUtils.addChangeEventListener("amplitudeScale", refreshSpectrumAndFilterDisplay);
-   DomUtils.addChangeEventListener("averagingWidth", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("maxDisplayFreq", refreshSpectrumAndFilterDisplay);
+   DomUtils.addChangeEventListener("averagingMode", refreshSpectrumAndFilterDisplay);
+   DomUtils.addChangeEventListener("averagingWidth", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("specProc", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterType", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterFreq1", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterFreq2", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterSmoothingWidth", updateSpectralProcessing);
    filterEditorWidget.addEventListener("change", () => catchError(updateSpectralProcessingAsync));
-   DomUtils.restoreValueNum("averagingWidth", 100);
-   DomUtils.restoreValueNum("maxDisplayFreq", 5500);
-   DomUtils.restoreValueNum("filterFreq1", 1000);
-   DomUtils.restoreValueNum("filterFreq2", 2000);
-   DomUtils.restoreValueNum("filterSmoothingWidth", 100);
-   DomUtils.restoreValueNum("outputSampleRate", 44100);
-   DomUtils.addValueNumSaver("averagingWidth");
-   DomUtils.addValueNumSaver("maxDisplayFreq");
-   DomUtils.addValueNumSaver("filterFreq1");
-   DomUtils.addValueNumSaver("filterFreq2");
-   DomUtils.addValueNumSaver("filterSmoothingWidth");
-   DomUtils.addValueNumSaver("outputSampleRate");
+// DomUtils.restoreValueNum("maxDisplayFreq", 5500);
+// DomUtils.restoreValueNum("averagingWidth", 100);
+// DomUtils.restoreValueNum("filterFreq1", 1000);
+// DomUtils.restoreValueNum("filterFreq2", 2000);
+// DomUtils.restoreValueNum("filterSmoothingWidth", 100);
+// DomUtils.restoreValueNum("outputSampleRate", 44100);
+// DomUtils.addValueNumSaver("maxDisplayFreq");
+// DomUtils.addValueNumSaver("averagingWidth");
+// DomUtils.addValueNumSaver("filterFreq1");
+// DomUtils.addValueNumSaver("filterFreq2");
+// DomUtils.addValueNumSaver("filterSmoothingWidth");
+// DomUtils.addValueNumSaver("outputSampleRate");
    DomUtils.addNumericFieldFormatSwitcher("maxDisplayFreq");
    DomUtils.addNumericFieldFormatSwitcher("filterFreq1");
    DomUtils.addNumericFieldFormatSwitcher("filterFreq2");

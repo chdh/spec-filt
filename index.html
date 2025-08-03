@@ -39,23 +39,36 @@
 
 <div class="parmBlock">
  <div class="parmLine">
-  <label class="w130" for="windowFunction" title="Window function to apply before FFT">Window function:</label>
+  <label class="w130" for="windowFunction" title="Window function to apply before FFT.">Window function:</label>
   <select class="w110" id="windowFunction">
   </select>
-  <label class="w130g" for="amplitudeScale" title="Amplitude scale for spectrum and filter curve display">Amplitude scale:</label>
+  <label class="w130g" for="amplitudeScale" title="Amplitude scale for spectrum and filter curve display.">Amplitude scale:</label>
   <select class="w110" id="amplitudeScale">
    <option value="log">Logarithmic</option>
    <option value="lin">Linear</option>
   </select>
+  <label class="w130g" for="maxDisplayFreq" title="Initial maximum frequency for zooming the spectrum display in Hz.">Max display freq.:</label>
+  <input class="w110" id="maxDisplayFreq" type="text" required value="5500">
+  <label class="w130g" for="averagingMode" title="Averaging mode for the smoothed spectrum energy curve.">Averaging mode:</label>
+  <select class="w110" id="averagingMode">
+   <option value="smaLin">SMA linear - Simple moving average over the linear spectral pressure amplitude values</option>
+   <option value="smaPow">SMA power - Simple moving average over the linear spectral power values</option>
+   <option value="smaLog">SMA log - Simple moving average over the logarithmic spectral amplitude values</option>
+   <option value="tmaLin">TMA linear - Triangular moving average over the linear spectral pressure amplitude values</option>
+   <option value="tmaPow">TMA power - Triangular moving average over the linear spectral power values</option>
+   <option value="tmaLog">TMA log - Triangular moving average over the logarithmic spectral amplitude values</option>
+   <option value="smaPowLog2" selected>SMA power + 2x SMA log</option>
+  </select>
   <label class="w130g" for="averagingWidth" title="Averaging bandwidth for the smoothed spectrum energy curve.">Averag. width [Hz]:</label>
-  <input class="w110" id="averagingWidth" type="number" step="any" required>
-  <label class="w130g" for="maxDisplayFreq" title="Initial maximum frequency for zooming the spectrum display">Max display freq.:</label>
-  <input class="w110" id="maxDisplayFreq" type="text" required>
+  <input class="w110" id="averagingWidth" type="number" step="any" required value="250">
  </div>
 </div>
 
 <div class="actionButtons">
  <button id="fftButton">FFT</button>
+ <button id="copySpectrumButton" title="Copy smoothed curve coordinates to clipboard.">Copy</button>
+ <label class="w130" for="copySpectrumStepWidth" title="Step width for spectrum frequency coordinate points that will be copied to clipboard.">Step width [Hz]:</label>
+ <input class="w110" id="copySpectrumStepWidth" type="number" step="any" required value="50">
 </div>
 
 <div class="functionCurveViewerFrame spectrumFrame canvasFrame">
@@ -65,7 +78,7 @@
 
 <div class="parmBlock">
  <div class="parmLine">
-  <label class="w130" for="specProc" title="Spectral processing">Processing:</label>
+  <label class="w130" for="specProc" title="Spectral processing.">Processing:</label>
   <select class="w110" id="specProc">
    <option value="filter">Filter amplitudes</option>
    <!-- <option value="scaleTime">Scale time</option> -->
@@ -74,7 +87,7 @@
    <option value="phasesNeg">Negate phases</option>
    <option value="phasesAlt">Alternate phases</option>
   </select>
-  <label class="w130g" for="specScalingFactor" title="Spectral scaling factor for time or frequency scaling">Scaling factor:</label>
+  <label class="w130g" for="specScalingFactor" title="Spectral scaling factor for time or frequency scaling.">Scaling factor:</label>
   <input class="w110" id="specScalingFactor" type="number" step="any" value="1" required>
  </div>
  <div id="filterParms" class="parmLine">
@@ -87,11 +100,11 @@
    <option value="curve">Curve</option>
   </select>
   <label class="w130g" id="filterFreq1Label" for="filterFreq1">Frequency 1:</label>
-  <input class="w110" id="filterFreq1" type="text" required>
+  <input class="w110" id="filterFreq1" type="text" required value="1000">
   <label class="w130g" for="filterFreq2">Frequency 2:</label>
-  <input class="w110" id="filterFreq2" type="text" required>
+  <input class="w110" id="filterFreq2" type="text" required value="2000">
   <label class="w130g" for="filterSmoothingWidth" title="The distance between the start of the smoothing and the -6dB point.">Smoothing [Hz]:</label>
-  <input class="w110" id="filterSmoothingWidth" type="number" step="any" required>
+  <input class="w110" id="filterSmoothingWidth" type="number" step="any" required value="100">
  </div>
 </div>
 
@@ -121,9 +134,9 @@
 
 <div class="parmBlock">
  <div class="parmLine">
-  <label class="w130" for="outputSampleRate" title="Sample rate for synthesizing the output signal">Sample rate:</label>
-  <input class="w110" id="outputSampleRate" type="text" required>
-  <label class="w130g" for="outpusStretchFactor" title="Factor to stretch (if &gt; 1) or squeeze (if &lt; 1) the output signal">Stretch factor:</label>
+  <label class="w130" for="outputSampleRate" title="Sample rate for synthesizing the output signal.">Sample rate:</label>
+  <input class="w110" id="outputSampleRate" type="text" required value="44100">
+  <label class="w130g" for="outputStretchFactor" title="Factor to stretch (if &gt; 1) or squeeze (if &lt; 1) the output signal.">Stretch factor:</label>
   <input class="w110" id="outputStretchFactor" type="number" step="any" value="1" required>
  </div>
 </div>

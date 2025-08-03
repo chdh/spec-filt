@@ -1,6 +1,6 @@
 // Browser DOM utilities.
 
-import {catchError, formatNumber, decodeNumber} from "./Utils";
+import {catchError, formatNumber, decodeNumber} from "./Utils.ts";
 
 export function getElement (elementOrId: HTMLElement | string) : HTMLElement {
    if (typeof elementOrId != "string") {

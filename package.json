@@ -1,14 +1,16 @@
 {
    "private": true,
+   "type": "module",
    "scripts": {
       "build": "tsc && rollup -c",
       "lint": "eslint --ext .ts src/**"
    },
    "dependencies": {
-      "dsp-collection": "^0.2.4",
+      "dsp-collection": "^0.2.6",
       "function-curve-editor": "^1.0.14",
       "function-curve-viewer": "^1.0.26",
       "wav-file-decoder": "^1.0.1",
-      "wav-file-encoder": "^1.0.2"
+      "wav-file-encoder": "^1.0.2",
+      "dialog-manager": "^1.0.3"
    }
 }
