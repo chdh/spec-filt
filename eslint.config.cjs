@@ -49,8 +49,10 @@ const rules = {
 
    // Modifications of default rules:
    "no-constant-condition": ["error", {checkLoops: false }],
+   "no-var": "off",
+   "require-atomic-updates": "off",
 
-   // Additional Typescript plugin rules:
+   // Additional plugin rules:
    "@typescript-eslint/explicit-member-accessibility": "error",
    "@stylistic/member-delimiter-style": "error",
    "@typescript-eslint/naming-convention": namingOptions,
@@ -90,7 +92,6 @@ const rules = {
    "@typescript-eslint/no-wrapper-object-types": "off",
    "@typescript-eslint/restrict-plus-operands": "off",
    "@typescript-eslint/restrict-template-expressions": "off",
-   "no-var": "off",                                     // @typescript-eslint/recommended switches this on
 
    // Check-file plugin rules:
    "check-file/filename-naming-convention": ["error", {"**/*.ts": "[A-Z]*"}],

@@ -26,6 +26,7 @@
 
 <div class="miniButtonsBelowViewer">
  <div id="functionCurveViewerHelpButton" class="miniPseudoButton">Help</div>
+ <div id="copyAmplitudeCurveButton" class="miniPseudoButton">Copy curve</div>
 </div>
 <div id="functionCurveViewerHelpText" class="hidden helpText"></div>
 
@@ -49,7 +50,7 @@
   </select>
   <label class="w130g" for="maxDisplayFreq" title="Initial maximum frequency for zooming the spectrum display in Hz.">Max display freq.:</label>
   <input class="w110" id="maxDisplayFreq" type="text" required value="5500">
-  <label class="w130g" for="averagingMode" title="Averaging mode for the smoothed spectrum energy curve.">Averaging mode:</label>
+  <label class="w130g" for="averagingMode" title="Averaging mode for the smoothed spectrum curve.">Averaging mode:</label>
   <select class="w110" id="averagingMode">
    <option value="smaLin">SMA linear - Simple moving average over the linear spectral pressure amplitude values</option>
    <option value="smaPow">SMA power - Simple moving average over the linear spectral power values</option>
@@ -59,21 +60,21 @@
    <option value="tmaLog">TMA log - Triangular moving average over the logarithmic spectral amplitude values</option>
    <option value="smaPowLog2" selected>SMA power + 2x SMA log</option>
   </select>
-  <label class="w130g" for="averagingWidth" title="Averaging bandwidth for the smoothed spectrum energy curve.">Averag. width [Hz]:</label>
+  <label class="w130g" for="averagingWidth" title="Averaging bandwidth for the smoothed spectrum curve.">Averag. width [Hz]:</label>
   <input class="w110" id="averagingWidth" type="number" step="any" required value="250">
  </div>
 </div>
 
 <div class="actionButtons">
  <button id="fftButton">FFT</button>
- <button id="copySpectrumButton" title="Copy smoothed curve coordinates to clipboard.">Copy</button>
- <label class="w130" for="copySpectrumStepWidth" title="Step width for spectrum frequency coordinate points that will be copied to clipboard.">Step width [Hz]:</label>
- <input class="w110" id="copySpectrumStepWidth" type="number" step="any" required value="50">
 </div>
 
 <div class="functionCurveViewerFrame spectrumFrame canvasFrame">
  <canvas id="inputSpectrumViewerCanvas" class="functionCurveViewer" tabindex="-1">
  </canvas>
+</div>
+<div class="miniButtonsBelowViewer">
+ <div id="copySpectrumCurveButton" class="miniPseudoButton">Copy curve</div>
 </div>
 
 <div class="parmBlock">

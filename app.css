@@ -173,8 +173,8 @@ div.miniButtonsBelowViewer {
    margin-top: 5px;
    display: flex; }
 
-div.miniButtonsBelow div {
-   margin-right: 10px; }
+div.miniButtonsBelowViewer div {
+   margin-right: 15px; }
 
 .helpText {
    background-color: #FEFAE2;

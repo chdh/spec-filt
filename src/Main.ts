@@ -12,11 +12,14 @@ import * as Fft from "dsp-collection/signal/Fft";
 // import * as Resampling from "dsp-collection/signal/Resampling";
 import * as DspUtils from "dsp-collection/utils/DspUtils";
 import * as MathUtils from "dsp-collection/math/MathUtils";
+import * as FirFilterWin from "dsp-collection/filter/FirFilterWin";
 import * as SpecFilt from "dsp-collection/filter/SpecFilt";
 import {FilterCurveFunction} from "dsp-collection/filter/SpecFilt";
 import ComplexArray from "dsp-collection/math/ComplexArray";
 
 var audioPlayer:                       InternalAudioPlayer;
+var spectrumCurveStepWidth:            number = 50;                  // step width in Hz for spectrum curve frequency coordinate points that will be copied to clipboard
+var amplitudeCurveStepWidthMs:         number = 20;                  // step width in ms for amplitude curve
 
 // GUI components:
 var inputSignalViewerWidget:           FunctionCurveViewer.Widget;
@@ -166,7 +169,7 @@ function createSpectrumAveragingFunction (spectrum: Float64Array, scaleIsLog: bo
    const out = scaleIsLog ? avgSpectrumLog : avgSpectrumLog.map(DspUtils.convertDbToAmplitude);
    return FunctionCurveViewer.createViewerFunctionForArray(out, {scalingFactor, nearestNeighbor: true, average: true}); }
 
-//--- Curve to clipboard -------------------------------------------------------
+//--- Copy to clipboard --------------------------------------------------------
 
 interface Point {x: number; y: number}
 
@@ -184,33 +187,71 @@ function encodeCoordinateList (points: Point[]) : string {
       s += "[" + formatCoordinateValue(point.x) + ", " + formatCoordinateValue(point.y) + "]"; }
    return s; }
 
-function getAvgSpectrumPoints (spectrum: Float64Array, scalingFactor: number, stepWidth: number, maxFreq: number) {
+function getAvgSpectrumPoints (spectrum: Float64Array, scalingFactor: number, stepWidth: number, maxFreq: number) : Point[] {
    const points: Point[] = [];
-   points.push({x: 0, y: -125});
-   points.push({x: 1, y: -124});
-   points.push({x: 2, y: -123});
    for (let x = stepWidth; x < maxFreq; x += stepWidth) {
       const i = Math.round(x * scalingFactor);
       if (i <= 0 || i >= spectrum.length) {
          continue; }
       const y = spectrum[i];
-      points.push({x, y}); }
-   const endFreq = (Math.floor(maxFreq / stepWidth) + 1) * stepWidth;
-   points.push({x: endFreq + 0, y: -123});
-   points.push({x: endFreq + 1, y: -124});
-   points.push({x: endFreq + 2, y: -125});
+      if (isFinite(y)) {
+         points.push({x, y}); }}
    return points; }
 
-async function copySpectrumButton_click() {
-   const stepWidth = DomUtils.getValueNum("copySpectrumStepWidth");
+function genSectrumCurveDataString (spectrum: Float64Array, scalingFactor: number, stepWidth: number) : string {
    const maxFreq = DomUtils.getValueNum("maxDisplayFreq");
-   const avgSpectrumLog = createSpectrumAverage(inputSpectrumAmplitudes, inputSpectrumScalingFactor);
+   const avgSpectrumLog = createSpectrumAverage(spectrum, scalingFactor);
    if (!avgSpectrumLog) {
       throw new Error("No average spectrum."); }
-   const points = getAvgSpectrumPoints(avgSpectrumLog, inputSpectrumScalingFactor, stepWidth, maxFreq);
-   const s = encodeCoordinateList(points);
+   const points = getAvgSpectrumPoints(avgSpectrumLog, scalingFactor, stepWidth, maxFreq);
+   return encodeCoordinateList(points); }
+
+async function copySpectrumCurveButton_click() {
+   if (!inputSpectrumValid) {
+      return; }
+   const newWidth = await DomUtils.promptNumber("Copy smoothed spectrum curve coordinates to clipboard", "Step width [Hz]", spectrumCurveStepWidth);
+   if (!newWidth) {
+      return; }
+   spectrumCurveStepWidth = newWidth;
+   const s = genSectrumCurveDataString(inputSpectrumAmplitudes, inputSpectrumScalingFactor, spectrumCurveStepWidth);
    await navigator.clipboard.writeText(s);
    DialogManager.showToast({msgText: "Spectrum curve copied to clipboard."}); }
+
+function spectrumViewer_clipboardCopyEventHandler (event: ClipboardEvent, spectrum: Float64Array, scalingFactor: number) {
+   if (!event.clipboardData) {
+      return; }
+   event.preventDefault();
+   const s = genSectrumCurveDataString(spectrum, scalingFactor, spectrumCurveStepWidth);
+   event.clipboardData.setData("text", s); }
+
+function getAmplitudeCurvePoints (origSignal: Float32Array, sampleRate: number, stepWidth: number) : Point[] {
+   const rmsSignal = origSignal.map(x => x * x);                               // signal energy
+   const duration = rmsSignal.length / sampleRate;
+   const stepToMinFactor = 3;                                                  // heuristic factor, we want minimal distortion from f0*2 but maximal resolution per step
+   const firstMinFrequency = 1 / stepWidth * stepToMinFactor;
+   const normFirstMinFreq = firstMinFrequency / sampleRate;
+   const iirKernel = FirFilterWin.createLpFilterKernel("blackman", normFirstMinFreq);
+   const points: Point[] = [];
+   for (let t = stepWidth / 2; t <= duration - stepWidth / 2; t += stepWidth) {
+      const p = Math.round(t * sampleRate);
+      const v = FirFilterWin.applyFirKernelAt(rmsSignal, p, iirKernel);
+      const y = DspUtils.convertPowerToDb(v);
+      if (isFinite(y)) {
+         points.push({x: t, y}); }}
+   return points; }
+
+async function copyAmplitudeCurveButton_click() {
+   if (!inputSignalValid) {
+      return; }
+   const newWidth = await DomUtils.promptNumber("Copy amplitude curve coordinates to clipboard", "Step width [ms]", amplitudeCurveStepWidthMs);
+   if (!newWidth) {
+      return; }
+   amplitudeCurveStepWidthMs = newWidth;
+   const inputSignalSel = inputSignal.subarray(inputSignalStart, inputSignalEnd);
+   const points = getAmplitudeCurvePoints(inputSignalSel, inputSampleRate, amplitudeCurveStepWidthMs / 1000);
+   const s = encodeCoordinateList(points);
+   await navigator.clipboard.writeText(s);
+   DialogManager.showToast({msgText: "Amplitude curve copied to clipboard."}); }
 
 //--- Spectrum viewers ---------------------------------------------------------
 
@@ -225,6 +266,8 @@ function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float
          case 0:  return averagingFunction ? averagingFunction(x, sampleWidth, 0) : undefined;
          case 1:  return spectrumFunction(x, sampleWidth, 0);
          default: throw new Error(); }};
+   const copyEventHandler = (event: ClipboardEvent) => {
+      spectrumViewer_clipboardCopyEventHandler(event, spectrum, scalingFactor); };
    const viewerState : Partial<FunctionCurveViewer.ViewerState> = {
       viewerFunction:  viewerFunction,
       channels:        2,
@@ -236,7 +279,8 @@ function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float
       primaryZoomMode: FunctionCurveViewer.ZoomMode.x,
       xAxisUnit:       "Hz",
       yAxisUnit:       scaleIsLog ? "dB" : undefined,
-      focusShield:     true };
+      focusShield:     true,
+      copyEventHandler };
    widget.setViewerState(viewerState); }
 
 //--- Load audio file ----------------------------------------------------------
@@ -530,7 +574,6 @@ function refreshMainGui() {
    DomUtils.setText("playInputButton", playButtonText);
    DomUtils.enableElement("saveInputWavFileButton", inputSignalAvailable);
    DomUtils.enableElement("fftButton", inputSignalAvailable);
-   DomUtils.enableElement("copySpectrumButton", inputSpectrumValid);
    DomUtils.enableElement("ifftButton", outputSpectrumValid);
    DomUtils.enableElement("ifftAndPlayButton", outputSpectrumValid);
    DomUtils.setText("ifftAndPlayButton", audioPlayer.isPlaying() ? "Stop" : "iFFT + Play");
@@ -607,13 +650,14 @@ async function startup() {
    DomUtils.addClickEventListener("playInputButton", playInputButton_click);
    DomUtils.addClickEventListener("saveInputWavFileButton", saveInputWavFileButton_click);
    DomUtils.addClickEventListener("fftButton", fftButton_click);
-   DomUtils.addClickEventListener("copySpectrumButton", copySpectrumButton_click);
+   DomUtils.addClickEventListener("copySpectrumCurveButton", copySpectrumCurveButton_click);
    DomUtils.addClickEventListener("ifftButton", ifftButton_click);
    DomUtils.addClickEventListener("ifftAndPlayButton", ifftAndPlayButton_click);
    DomUtils.addClickEventListener("playOutputButton", playOutputButton_click);
    DomUtils.addClickEventListener("saveOutputWavFileButton", saveOutputWavFileButton_click);
    DomUtils.addClickEventListener("functionCurveViewerHelpButton", functionCurveViewerHelpButton_click);
    DomUtils.addClickEventListener("functionCurveEditorHelpButton", functionCurveEditorHelpButton_click);
+   DomUtils.addClickEventListener("copyAmplitudeCurveButton", copyAmplitudeCurveButton_click);
    inputSignalViewerWidget.addEventListener("segmentchange", () => catchError(inputSignalViewer_segmentChange));
    DomUtils.addChangeEventListener("amplitudeScale", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("maxDisplayFreq", refreshSpectrumAndFilterDisplay);

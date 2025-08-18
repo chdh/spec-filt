@@ -1,6 +1,7 @@
 // Browser DOM utilities.
 
 import {catchError, formatNumber, decodeNumber} from "./Utils.ts";
+import * as DialogManager from "dialog-manager";
 
 export function getElement (elementOrId: HTMLElement | string) : HTMLElement {
    if (typeof elementOrId != "string") {
@@ -140,3 +141,13 @@ export function addChangeEventListener (elementOrId: HTMLElement | string, liste
 
 export function addClickEventListener (elementOrId: HTMLElement | string, listener: Function, ...args: any[]) {
    addEventListener(elementOrId, "click", listener, ...args); }
+
+export async function promptNumber (titleText: string, promptText: string, defaultValue: number) : Promise<number|undefined> {
+   const s = await DialogManager.promptInput({titleText, promptText, defaultValue: String(defaultValue)});
+   if (!s) {
+      return; }
+   const n = Number(s);
+   if (!Number.isFinite(n)) {
+      await DialogManager.showMsg({titleText: "Error", msgText: "Invalid number: " + s});
+      return; }
+   return n; }
