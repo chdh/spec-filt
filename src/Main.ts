@@ -36,6 +36,7 @@ var inputSignalStart:                  number;                       // sample p
 var inputSignalEnd:                    number;                       // sample position of end of selected segment
 var inputSampleRate:                   number;
 var inputFileName:                     string;
+var inputFileF0:                       number;                       // fundamental frequency associated with input file or 0
 
 // Input spectrum:
 var inputSpectrumValid:                boolean = false;
@@ -65,15 +66,16 @@ function loadSignalViewer (widget: FunctionCurveViewer.Widget, signal: ArrayLike
    const viewerFunction = FunctionCurveViewer.createViewerFunctionForArray(signal, {scalingFactor: sampleRate});
    const yRange = 1.2;
    const viewerState : Partial<FunctionCurveViewer.ViewerState> = {
-      viewerFunction:  viewerFunction,
-      xMin:            0,
-      xMax:            signal.length / sampleRate,
-      yMin:            -yRange,
-      yMax:            yRange,
-      gridEnabled:     true,
-      primaryZoomMode: FunctionCurveViewer.ZoomMode.x,
-      xAxisUnit:       "s",
-      focusShield:     true };
+      viewerFunction:   viewerFunction,
+      xMin:             0,
+      xMax:             signal.length / sampleRate,
+      yMin:             -yRange,
+      yMax:             yRange,
+      gridEnabled:      true,
+      primaryZoomMode:  FunctionCurveViewer.ZoomMode.x,
+      xAxisUnit:        "s",
+      focusShield:      true,
+      copyEventHandler: signalViewer_clipboardCopyEventHandler };
    widget.setViewerState(viewerState); }
 
 function inputSignalViewer_segmentChange() {
@@ -174,9 +176,10 @@ function createSpectrumAveragingFunction (spectrum: Float64Array, scaleIsLog: bo
 interface Point {x: number; y: number}
 
 function formatCoordinateValue (v: number) {
-   let s = String(v);
+   const v2 = Math.round(v * 1E6 + Number.EPSILON) / 1E6;
+   let s = String(v2);
    if (s.length > 6) {
-      s = v.toFixed(2); }
+      s = v2.toFixed(2); }
    return s; }
 
 function encodeCoordinateList (points: Point[]) : string {
@@ -198,30 +201,30 @@ function getAvgSpectrumPoints (spectrum: Float64Array, scalingFactor: number, st
          points.push({x, y}); }}
    return points; }
 
-function genSectrumCurveDataString (spectrum: Float64Array, scalingFactor: number, stepWidth: number) : string {
+function genSpectrumCurveDataString() : string {
    const maxFreq = DomUtils.getValueNum("maxDisplayFreq");
-   const avgSpectrumLog = createSpectrumAverage(spectrum, scalingFactor);
+   const avgSpectrumLog = createSpectrumAverage(inputSpectrumAmplitudes, inputSpectrumScalingFactor);
    if (!avgSpectrumLog) {
       throw new Error("No average spectrum."); }
-   const points = getAvgSpectrumPoints(avgSpectrumLog, scalingFactor, stepWidth, maxFreq);
+   const points = getAvgSpectrumPoints(avgSpectrumLog, inputSpectrumScalingFactor, spectrumCurveStepWidth, maxFreq);
    return encodeCoordinateList(points); }
 
 async function copySpectrumCurveButton_click() {
    if (!inputSpectrumValid) {
       return; }
-   const newWidth = await DomUtils.promptNumber("Copy smoothed spectrum curve coordinates to clipboard", "Step width [Hz]", spectrumCurveStepWidth);
-   if (!newWidth) {
+   const newStepWidth = await DomUtils.promptNumber("Copy smoothed spectrum curve coordinates to clipboard", "Step width [Hz]", spectrumCurveStepWidth);
+   if (!newStepWidth) {
       return; }
-   spectrumCurveStepWidth = newWidth;
-   const s = genSectrumCurveDataString(inputSpectrumAmplitudes, inputSpectrumScalingFactor, spectrumCurveStepWidth);
+   spectrumCurveStepWidth = newStepWidth;
+   const s = genSpectrumCurveDataString();
    await navigator.clipboard.writeText(s);
    DialogManager.showToast({msgText: "Spectrum curve copied to clipboard."}); }
 
-function spectrumViewer_clipboardCopyEventHandler (event: ClipboardEvent, spectrum: Float64Array, scalingFactor: number) {
+function spectrumViewer_clipboardCopyEventHandler (event: ClipboardEvent) {
    if (!event.clipboardData) {
       return; }
    event.preventDefault();
-   const s = genSectrumCurveDataString(spectrum, scalingFactor, spectrumCurveStepWidth);
+   const s = genSpectrumCurveDataString();
    event.clipboardData.setData("text", s); }
 
 function getAmplitudeCurvePoints (origSignal: Float32Array, sampleRate: number, stepWidth: number) : Point[] {
@@ -240,20 +243,30 @@ function getAmplitudeCurvePoints (origSignal: Float32Array, sampleRate: number, 
          points.push({x: t, y}); }}
    return points; }
 
+function genAmplitudeCurveDataString() {
+   const inputSignalSel = inputSignal.subarray(inputSignalStart, inputSignalEnd);
+   const points = getAmplitudeCurvePoints(inputSignalSel, inputSampleRate, amplitudeCurveStepWidthMs / 1000);
+   return encodeCoordinateList(points); }
+
 async function copyAmplitudeCurveButton_click() {
    if (!inputSignalValid) {
       return; }
-   const newWidth = await DomUtils.promptNumber("Copy amplitude curve coordinates to clipboard", "Step width [ms]", amplitudeCurveStepWidthMs);
-   if (!newWidth) {
+   const newStepWidth = await DomUtils.promptNumber("Copy amplitude curve coordinates to clipboard", "Step width [ms]", amplitudeCurveStepWidthMs);
+   if (!newStepWidth) {
       return; }
-   amplitudeCurveStepWidthMs = newWidth;
-   const inputSignalSel = inputSignal.subarray(inputSignalStart, inputSignalEnd);
-   const points = getAmplitudeCurvePoints(inputSignalSel, inputSampleRate, amplitudeCurveStepWidthMs / 1000);
-   const s = encodeCoordinateList(points);
+   amplitudeCurveStepWidthMs = newStepWidth;
+   const s = genAmplitudeCurveDataString();
    await navigator.clipboard.writeText(s);
    DialogManager.showToast({msgText: "Amplitude curve copied to clipboard."}); }
 
-//--- Spectrum viewers ---------------------------------------------------------
+function signalViewer_clipboardCopyEventHandler (event: ClipboardEvent) {
+   if (!event.clipboardData) {
+      return; }
+   event.preventDefault();
+   const s = genAmplitudeCurveDataString();
+   event.clipboardData.setData("text", s); }
+
+//--- Spectrum viewer ----------------------------------------------------------
 
 // Load spectrum amplitude viewer.
 function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float64Array, scalingFactor: number) {
@@ -266,32 +279,31 @@ function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float
          case 0:  return averagingFunction ? averagingFunction(x, sampleWidth, 0) : undefined;
          case 1:  return spectrumFunction(x, sampleWidth, 0);
          default: throw new Error(); }};
-   const copyEventHandler = (event: ClipboardEvent) => {
-      spectrumViewer_clipboardCopyEventHandler(event, spectrum, scalingFactor); };
    const viewerState : Partial<FunctionCurveViewer.ViewerState> = {
-      viewerFunction:  viewerFunction,
-      channels:        2,
-      xMin:            0,
-      xMax:            DomUtils.getValueNum("maxDisplayFreq"),
-      yMin:            scaleIsLog ? -100 : 0,
-      yMax:            scaleIsLog ? 0 : 0.2,
-      gridEnabled:     true,
-      primaryZoomMode: FunctionCurveViewer.ZoomMode.x,
-      xAxisUnit:       "Hz",
-      yAxisUnit:       scaleIsLog ? "dB" : undefined,
-      focusShield:     true,
-      copyEventHandler };
+      viewerFunction:   viewerFunction,
+      channels:         2,
+      xMin:             0,
+      xMax:             DomUtils.getValueNum("maxDisplayFreq"),
+      yMin:             scaleIsLog ? -100 : 0,
+      yMax:             scaleIsLog ? 0 : 0.2,
+      gridEnabled:      true,
+      primaryZoomMode:  FunctionCurveViewer.ZoomMode.x,
+      xAxisUnit:        "Hz",
+      yAxisUnit:        scaleIsLog ? "dB" : undefined,
+      focusShield:      true,
+      copyEventHandler: spectrumViewer_clipboardCopyEventHandler };
    widget.setViewerState(viewerState); }
 
 //--- Load audio file ----------------------------------------------------------
 
-async function loadAudioFileData (fileData: ArrayBuffer, fileName: string) {
+async function loadAudioFileData (fileData: ArrayBuffer, fileName: string, f0: number = 0) {
    const audioData = await AudioUtils.decodeAudioFileData(fileData);
    inputSignal = audioData.channelData[0];                 // only the first channel is used
    inputSignalStart = 0;
    inputSignalEnd = inputSignal.length;
    inputSampleRate = audioData.sampleRate;
    inputFileName = fileName;
+   inputFileF0 = f0;
    inputSignalValid = true;
    loadSignalViewer(inputSignalViewerWidget, inputSignal, inputSampleRate);
    setInputSignalInfo();
@@ -306,10 +318,10 @@ async function loadFileFromUrl (url: string) : Promise<ArrayBuffer> {
       throw new Error("Request failed for " + url); }
    return await response.arrayBuffer(); }
 
-async function loadAudioFileFromUrl (url: string) {
+async function loadAudioFileFromUrl (url: string, f0: number) {
    const fileData = await loadFileFromUrl(url);
    const fileName = url.substring(url.lastIndexOf("/") + 1);
-   await loadAudioFileData(fileData, fileName); }
+   await loadAudioFileData(fileData, fileName, f0); }
 
 async function loadLocalAudioFile (file: File) {
    const fileData = await file.arrayBuffer();
@@ -624,8 +636,9 @@ async function processUrlParameters() {
    const usp = new URLSearchParams(parmsString);
    const defaultAudioFile = (window.location.protocol != "file:") ? "testSound1.wav" : undefined;
    const audioFileUrl = usp.get("file") ?? defaultAudioFile;
+   const f0 = Number(usp.get("f0") ?? "0");
    if (audioFileUrl) {
-      await loadAudioFileFromUrl(audioFileUrl); }}
+      await loadAudioFileFromUrl(audioFileUrl, f0); }}
 
 async function startup() {
    audioPlayer = new InternalAudioPlayer();
@@ -687,6 +700,8 @@ async function startup() {
    DomUtils.addNumericFieldFormatSwitcher("outputSampleRate");
    refreshFilterGui();
    await processUrlParameters();
+   if (inputFileF0 > 0) {                                  // F0 value received in Link from ZHCorpus
+      DomUtils.setValueNum("averagingWidth", inputFileF0); }
    refreshMainGui(); }
 
 document.addEventListener("DOMContentLoaded", () => catchError(startup));
