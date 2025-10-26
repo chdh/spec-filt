@@ -176,10 +176,10 @@ function createSpectrumAveragingFunction (spectrum: Float64Array, scaleIsLog: bo
 interface Point {x: number; y: number}
 
 function formatCoordinateValue (v: number) {
-   const v2 = Math.round(v * 1E6 + Number.EPSILON) / 1E6;
+   const v2 = Math.round(v * 1E6) / 1E6;
    let s = String(v2);
-   if (s.length > 6) {
-      s = v2.toFixed(2); }
+   if (s.length > 8) {
+      s = v.toFixed(2); }
    return s; }
 
 function encodeCoordinateList (points: Point[]) : string {
@@ -418,7 +418,7 @@ function updateFilterEditorWidget (reset: boolean) {
       knots = oldKnots.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: Math.max(-100, DspUtils.convertAmplitudeToDb(Math.max(0, p.y)))})); }
     else {
       knots = oldKnots.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: DspUtils.convertDbToAmplitude(p.y)})); }
-   const editorState = <FunctionCurveEditor.EditorState>{
+   const editorState : Partial<FunctionCurveEditor.EditorState> = {
       knots:           knots,
       xMin:            0,
       xMax:            DomUtils.getValueNum("maxDisplayFreq"),
@@ -428,6 +428,8 @@ function updateFilterEditorWidget (reset: boolean) {
       relevantXMin:    0,
       gridEnabled:     true,
       primaryZoomMode: FunctionCurveEditor.ZoomMode.x,
+      xAxisUnit:       "Hz",
+      yAxisUnit:       scaleIsLog ? "dB" : undefined,
       focusShield:     true };
    filterEditorWidget.setEditorState(editorState);
    filterEditorWidgetKnotsAreLog = scaleIsLog;
