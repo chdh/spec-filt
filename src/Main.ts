@@ -1,6 +1,7 @@
 import * as Utils from "./Utils.ts";
 import {catchError, formatNumber, AsyncCallGate} from "./Utils.ts";
 import InternalAudioPlayer from "./InternalAudioPlayer.js";
+import * as SpecAverage from "./SpecAverage.ts";
 import * as DomUtils from "./DomUtils.ts";
 import * as AudioUtils from "./AudioUtils.ts";
 import * as WavFileEncoder from "wav-file-encoder";
@@ -11,7 +12,6 @@ import * as WindowFunctions from "dsp-collection/signal/WindowFunctions";
 import * as Fft from "dsp-collection/signal/Fft";
 // import * as Resampling from "dsp-collection/signal/Resampling";
 import * as DspUtils from "dsp-collection/utils/DspUtils";
-import * as MathUtils from "dsp-collection/math/MathUtils";
 import * as FirFilterWin from "dsp-collection/filter/FirFilterWin";
 import * as SpecFilt from "dsp-collection/filter/SpecFilt";
 import {FilterCurveFunction} from "dsp-collection/filter/SpecFilt";
@@ -45,7 +45,7 @@ var inputSpectrumPhases:               Float64Array;
 var inputSpectrumScalingFactor:        number;
 
 // Filter:
-var filterEditorWidgetKnotsAreLog:     boolean = false;
+var filterEditorWidgetKnotsAmplScale:  string|undefined = undefined;
 var filterEditorWidgetLoaded:          boolean = false;
 
 // Output spectrum:
@@ -91,86 +91,6 @@ function inputSignalViewer_segmentChange() {
    setInputSignalInfo();
    refreshMainGui(); }
 
-//--- Spectrum averaging -------------------------------------------------------
-
-// SMA linear - Simple moving average over the linear spectral pressure amplitude values.
-function createSpectrumAverage_smaLin (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
-   if (averagingWidth < 2) {
-      return undefined; }
-   const averagedSpectrum = MathUtils.simpleMovingAverage(spectrum, averagingWidth);
-   return averagedSpectrum.map(DspUtils.convertAmplitudeToDb); }
-
-// SMA power - Simple moving average over the linear spectral power values.
-function createSpectrumAverage_smaPow (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
-   if (averagingWidth < 2) {
-      return undefined; }
-   const spectrumSqr = spectrum.map(x => x * x);
-   const averagedSpectrumSqr = MathUtils.simpleMovingAverage(spectrumSqr, averagingWidth);
-   return averagedSpectrumSqr.map(DspUtils.convertPowerToDb); }
-
-// SMA log - Simple moving average over the logarithmic spectral amplitude values.
-function createSpectrumAverage_smaLog (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
-   if (averagingWidth < 2) {
-      return undefined; }
-   const spectrumLog = spectrum.map(DspUtils.convertAmplitudeToDb);
-   return MathUtils.simpleMovingAverage(spectrumLog, averagingWidth); }
-
-// TMA linear - Triangular moving average over the linear spectral pressure amplitude values.
-function createSpectrumAverage_tmaLin (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
-   if (averagingWidth < 4) {
-      return undefined; }
-   const averagedSpectrum = MathUtils.triangularMovingAverage(spectrum, averagingWidth);
-   return averagedSpectrum.map(DspUtils.convertAmplitudeToDb); }
-
-// TMA power - Triangular moving average over the linear spectral power values.
-function createSpectrumAverage_tmaPow (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
-   if (averagingWidth < 4) {
-      return undefined; }
-   const spectrumSqr = spectrum.map(x => x * x);
-   const averagedSpectrumSqr = MathUtils.triangularMovingAverage(spectrumSqr, averagingWidth);
-   return averagedSpectrumSqr.map(DspUtils.convertPowerToDb); }
-
-// TMA log - Triangular moving average over the logarithmic spectral amplitude values.
-function createSpectrumAverage_tmaLog (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
-   if (averagingWidth < 4) {
-      return undefined; }
-   const spectrumLog = spectrum.map(DspUtils.convertAmplitudeToDb);
-   return MathUtils.triangularMovingAverage(spectrumLog, averagingWidth); }
-
-// SMA power + 2x SMA log.
-function createSpectrumAverage_smaPowLog2 (spectrum: Float64Array, averagingWidth: number) : Float64Array | undefined {
-   if (averagingWidth < 8) {
-      return undefined; }
-   const spectrumSqr = spectrum.map(x => x * x);                                                   // power values
-   const averagedSpectrumSqr = MathUtils.simpleMovingAverage(spectrumSqr, averagingWidth);         // first SMA (power values)
-   const specLog1 = averagedSpectrumSqr.map(DspUtils.convertPowerToDb);                            // convert to log
-   const averagingWidth2 = Math.round(averagingWidth / 2);
-// const averagingWidth2 = Math.round(averagingWidth / 2 / Math.sqrt(2));
-   const specLog2 = MathUtils.simpleMovingAverage(specLog1, averagingWidth2);                      // second SMA (log values)
-   const averagingWidth3 = Math.round(averagingWidth2 / 2);
-// const averagingWidth3 = averagingWidth2;
-   return MathUtils.simpleMovingAverage(specLog2, averagingWidth3); }                              // third SMA (log values)
-
-function createSpectrumAverage (spectrum: Float64Array, scalingFactor: number) : Float64Array | undefined {
-   const averagingMode = DomUtils.getValue("averagingMode");
-   const averagingWidth = Math.round(DomUtils.getValueNum("averagingWidth") * scalingFactor);
-   switch (averagingMode) {
-      case "smaLin":     return createSpectrumAverage_smaLin(spectrum, averagingWidth);
-      case "smaPow":     return createSpectrumAverage_smaPow(spectrum, averagingWidth);
-      case "smaLog":     return createSpectrumAverage_smaLog(spectrum, averagingWidth);
-      case "tmaLin":     return createSpectrumAverage_tmaLin(spectrum, averagingWidth);
-      case "tmaPow":     return createSpectrumAverage_tmaPow(spectrum, averagingWidth);
-      case "tmaLog":     return createSpectrumAverage_tmaLog(spectrum, averagingWidth);
-      case "smaPowLog2": return createSpectrumAverage_smaPowLog2(spectrum, averagingWidth);
-      default:           return undefined; }}
-
-function createSpectrumAveragingFunction (spectrum: Float64Array, scaleIsLog: boolean, scalingFactor: number) : FunctionCurveViewer.ViewerFunction | undefined {
-   const avgSpectrumLog = createSpectrumAverage(spectrum, scalingFactor);
-   if (!avgSpectrumLog) {
-      return undefined; }
-   const out = scaleIsLog ? avgSpectrumLog : avgSpectrumLog.map(DspUtils.convertDbToAmplitude);
-   return FunctionCurveViewer.createViewerFunctionForArray(out, {scalingFactor, nearestNeighbor: true, average: true}); }
-
 //--- Copy to clipboard --------------------------------------------------------
 
 interface Point {x: number; y: number}
@@ -203,7 +123,7 @@ function getAvgSpectrumPoints (spectrum: Float64Array, scalingFactor: number, st
 
 function genSpectrumCurveDataString() : string {
    const maxFreq = DomUtils.getValueNum("maxDisplayFreq");
-   const avgSpectrumLog = createSpectrumAverage(inputSpectrumAmplitudes, inputSpectrumScalingFactor);
+   const avgSpectrumLog = createSpectrumAverage_uip(inputSpectrumAmplitudes, inputSpectrumScalingFactor);
    if (!avgSpectrumLog) {
       throw new Error("No average spectrum."); }
    const points = getAvgSpectrumPoints(avgSpectrumLog, inputSpectrumScalingFactor, spectrumCurveStepWidth, maxFreq);
@@ -233,7 +153,7 @@ function getAmplitudeCurvePoints (origSignal: Float32Array, sampleRate: number, 
    const stepToMinFactor = 3;                                                  // heuristic factor, we want minimal distortion from f0*2 but maximal resolution per step
    const firstMinFrequency = 1 / stepWidth * stepToMinFactor;
    const normFirstMinFreq = firstMinFrequency / sampleRate;
-   const iirKernel = FirFilterWin.createLpFilterKernel("blackman", normFirstMinFreq);
+   const iirKernel = FirFilterWin.createFilterKernel({windowFunctionId: "blackman", normFirstMinFreq});
    const points: Point[] = [];
    for (let t = stepWidth / 2; t <= duration - stepWidth / 2; t += stepWidth) {
       const p = Math.round(t * sampleRate);
@@ -270,10 +190,29 @@ function signalViewer_clipboardCopyEventHandler (event: ClipboardEvent) {
 
 // Load spectrum amplitude viewer.
 function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float64Array, scalingFactor: number) {
-   const scaleIsLog = DomUtils.getValue("amplitudeScale") == "log";
-   const spectrum2 = scaleIsLog ? spectrum.map(DspUtils.convertAmplitudeToDb) : spectrum;
+   const amplitudeScale = DomUtils.getValue("amplitudeScale");
+   let spectrum2: Float64Array;
+   let yMin: number = 0;
+   let yMax: number;
+   let yAxisUnit: string|undefined = undefined;
+   switch (amplitudeScale) {
+      case "log": {
+         spectrum2 = spectrum.map(DspUtils.convertAmplitudeToDb);
+         yMin = -100;
+         yMax = -0;
+         yAxisUnit = "dB";
+         break; }
+      case "lin": {
+         spectrum2 = spectrum;
+         yMax = 0.1;
+         break; }
+      case "pwr": {
+         spectrum2 = spectrum.map(x => x * x);
+         yMax = 0.01;
+         break; }
+      default: throw new Error("Invalid amplitudeScale."); }
    const spectrumFunction = FunctionCurveViewer.createViewerFunctionForArray(spectrum2, {scalingFactor, nearestNeighbor: true});
-   const averagingFunction = createSpectrumAveragingFunction(spectrum, scaleIsLog, scalingFactor);
+   const averagingFunction = createSpectrumAveragingFunction(spectrum, amplitudeScale, scalingFactor);
    const viewerFunction = (x: number, sampleWidth: number, channel: number) => {
       switch (channel) {
          case 0:  return averagingFunction ? averagingFunction(x, sampleWidth, 0) : undefined;
@@ -284,15 +223,41 @@ function loadSpectrumViewer (widget: FunctionCurveViewer.Widget, spectrum: Float
       channels:         2,
       xMin:             0,
       xMax:             DomUtils.getValueNum("maxDisplayFreq"),
-      yMin:             scaleIsLog ? -100 : 0,
-      yMax:             scaleIsLog ? 0 : 0.2,
+      yMin,
+      yMax,
       gridEnabled:      true,
       primaryZoomMode:  FunctionCurveViewer.ZoomMode.x,
       xAxisUnit:        "Hz",
-      yAxisUnit:        scaleIsLog ? "dB" : undefined,
+      yAxisUnit,
       focusShield:      true,
       copyEventHandler: spectrumViewer_clipboardCopyEventHandler };
    widget.setViewerState(viewerState); }
+
+function createSpectrumAverage_uip (spectrum: Float64Array, scalingFactor: number) {
+   const averagingMode = DomUtils.getValue("averagingMode");
+   const averagingWidth = Math.round(DomUtils.getValueNum("averagingWidth") * scalingFactor);
+   const averagingWindowFunctionId = DomUtils.getValue("averagingWindowFunction");
+   const averagingWidth2 = Math.round(DomUtils.getValueNum("averagingWidth2") * scalingFactor);
+   const averagingWindowFunctionId2 = DomUtils.getValue("averagingWindowFunction2");
+   return SpecAverage.createSpectrumAverage(spectrum, scalingFactor, averagingMode, averagingWidth, averagingWindowFunctionId, averagingWidth2, averagingWindowFunctionId2); }
+
+function createSpectrumAveragingFunction (spectrum: Float64Array, amplitudeScale: string, scalingFactor: number) : FunctionCurveViewer.ViewerFunction | undefined {
+   const avgSpectrumLog = createSpectrumAverage_uip(spectrum, scalingFactor);
+   if (!avgSpectrumLog) {
+      return undefined; }
+   let out: Float64Array;
+   switch (amplitudeScale) {
+      case "log": {
+         out = avgSpectrumLog;
+         break; }
+      case "lin": {
+         out = avgSpectrumLog.map(DspUtils.convertDbToAmplitude);
+         break; }
+      case "pwr": {
+         out = avgSpectrumLog.map(DspUtils.convertDbToPower);
+         break; }
+      default: throw new Error("Invalid amplitudeScale."); }
+   return FunctionCurveViewer.createViewerFunctionForArray(out, {scalingFactor, nearestNeighbor: true, average: true}); }
 
 //--- Load audio file ----------------------------------------------------------
 
@@ -344,9 +309,10 @@ function loadInputSpectrumViewer() {
 
 function fftButton_click() {
    let inputSignalLen = inputSignalEnd - inputSignalStart;
-   if (inputSignalLen % 2 == 1 && inputSignalLen > 4096) {
-      console.log(`Note: The input signal length is reduced from ${inputSignalLen} to ${inputSignalLen - 1} to make it even and thus allowing faster FFT processing.`);
-      inputSignalLen--; }
+   if (inputSignalLen % 4 != 0 && inputSignalLen > 4096) {                     // 4 is used because the FFT may be applied a second time when smoothing the spectrum
+      const reducedInputSignalLen = Math.floor(inputSignalLen / 4) * 4;
+      console.log(`Note: The input signal length is reduced from ${inputSignalLen} to ${reducedInputSignalLen} to make it a multiple of 4 for allowing faster FFT processing.`);
+      inputSignalLen = reducedInputSignalLen; }
    const inputSignalSel = inputSignal.subarray(inputSignalStart, inputSignalStart + inputSignalLen);
    const windowFunctionId = DomUtils.getValue("windowFunction");
    const windowedSignal = (windowFunctionId == "rect") ? inputSignalSel : WindowFunctions.applyWindowById(inputSignalSel, windowFunctionId);
@@ -366,12 +332,16 @@ function genFilterCurveFunction() : FilterCurveFunction {
    const filterType = DomUtils.getValue("filterType");
    switch (filterType) {
       case "curve": {
-         const scaleIsLog = DomUtils.getValue("amplitudeScale") == "log";
+         const amplitudeScale = DomUtils.getValue("amplitudeScale");
          const filterCurveFunction = filterEditorWidget.getFunction();
-         if (scaleIsLog) {
-            return (frequency: number) => DspUtils.convertDbToAmplitude(filterCurveFunction(frequency)); }
-          else {
-            return filterCurveFunction; }}
+         switch (amplitudeScale) {
+            case "log": {
+               return (frequency: number) => DspUtils.convertDbToAmplitude(filterCurveFunction(frequency)); }
+            case "lin": {
+               return filterCurveFunction; }
+            case "pwr": {
+               return (frequency: number) => Math.sqrt(Math.max(0,filterCurveFunction(frequency))); }
+            default: throw new Error("Invalid amplitudeScale."); }}
       default: {
          const filterFreq1 = DomUtils.getValueNum("filterFreq1");
          const filterFreq2 = DomUtils.getValueNum("filterFreq2");
@@ -379,69 +349,120 @@ function genFilterCurveFunction() : FilterCurveFunction {
          return SpecFilt.getFilterCurveFunction(<SpecFilt.FilterType>filterType, filterFreq1, filterFreq2, smoothingWidth); }}}
 
 function loadFilterCurveViewer() {
-   const scaleIsLog = DomUtils.getValue("amplitudeScale") == "log";
+   const amplitudeScale = DomUtils.getValue("amplitudeScale");
    const filterCurveFunction = genFilterCurveFunction();
    let viewerFunction: (x: number) => number;
-   if (scaleIsLog) {
-      viewerFunction = (frequency: number) => {
-         const lin = filterCurveFunction(frequency);
-         const log = DspUtils.convertAmplitudeToDb(lin);
-         return Math.max(-95, log); }; }
-    else {
-      viewerFunction = filterCurveFunction; }
+   let yMin: number = 0;
+   let yMax: number;
+   let yAxisUnit: string|undefined = undefined;
+   switch (amplitudeScale) {
+      case "log": {
+         viewerFunction = (frequency: number) => {
+            const lin = filterCurveFunction(frequency);
+            const log = DspUtils.convertAmplitudeToDb(lin);
+            return Math.max(-95, log); };
+         yMin = -100;
+         yMax = 10;
+         yAxisUnit = "dB";
+         break; }
+      case "lin": {
+         viewerFunction = filterCurveFunction;
+         yMax = 1.2;
+         break; }
+      case "pwr": {
+         viewerFunction = (frequency: number) => filterCurveFunction(frequency) ** 2;
+         yMax = 1.5;
+         break; }
+      default: throw new Error("Invalid amplitudeScale."); }
    const viewerState : Partial<FunctionCurveViewer.ViewerState> = {
       viewerFunction:  viewerFunction,
       xMin:            0,
       xMax:            DomUtils.getValueNum("maxDisplayFreq"),
-      yMin:            scaleIsLog ? -100 : 0,
-      yMax:            scaleIsLog ? 10 : 1.2,
+      yMin,
+      yMax,
       gridEnabled:     true,
       primaryZoomMode: FunctionCurveViewer.ZoomMode.x,
       xAxisUnit:       "Hz",
-      yAxisUnit:       scaleIsLog ? "dB" : undefined,
+      yAxisUnit,
       focusShield:     true };
    filterViewerWidget.setViewerState(viewerState); }
 
 function updateFilterEditorWidget (reset: boolean) {
-   const scaleIsLog = DomUtils.getValue("amplitudeScale") == "log";
-   if (!reset && filterEditorWidgetLoaded && scaleIsLog == filterEditorWidgetKnotsAreLog) {
+   const amplitudeScale = DomUtils.getValue("amplitudeScale");
+   if (!reset && filterEditorWidgetLoaded && amplitudeScale == filterEditorWidgetKnotsAmplScale) {
       return; }
    const oldKnots = filterEditorWidget.getEditorState().knots;
    let knots: FunctionCurveEditor.Point[];
-   if (oldKnots.length == 0) {
+   if (oldKnots.length == 0 || !filterEditorWidgetKnotsAmplScale) {
       knots = [];
       for (let x = 0; x <= 4500; x += 500) {
-         knots.push({x, y: scaleIsLog ? 0 : 1}); }}
-    else if (scaleIsLog == filterEditorWidgetKnotsAreLog) {
-      knots = oldKnots; }
-    else if (scaleIsLog) {
-      knots = oldKnots.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: Math.max(-100, DspUtils.convertAmplitudeToDb(Math.max(0, p.y)))})); }
+         knots.push({x, y: amplitudeScale == "log" ? 0 : 1}); }}
     else {
-      knots = oldKnots.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: DspUtils.convertDbToAmplitude(p.y)})); }
+       knots = convertKnotsAmplitudeScale(oldKnots, filterEditorWidgetKnotsAmplScale, amplitudeScale); }
+   let yMin: number = 0;
+   let yMax: number;
+   let yAxisUnit: string|undefined = undefined;
+   switch (amplitudeScale) {
+      case "log": {
+         yMin = -100;
+         yMax = 30;
+         yAxisUnit = "dB";
+         break; }
+      case "lin": {
+         yMax = 10;
+         break; }
+      case "pwr": {
+         yMax = 100;
+         break; }
+      default: throw new Error("Invalid amplitudeScale."); }
    const editorState : Partial<FunctionCurveEditor.EditorState> = {
       knots:           knots,
       xMin:            0,
       xMax:            DomUtils.getValueNum("maxDisplayFreq"),
-      yMin:            scaleIsLog ? -100 : 0,
-      yMax:            scaleIsLog ? 30 : 1.5,
+      yMin,
+      yMax,
       extendedDomain:  true,
       relevantXMin:    0,
       gridEnabled:     true,
       primaryZoomMode: FunctionCurveEditor.ZoomMode.x,
       xAxisUnit:       "Hz",
-      yAxisUnit:       scaleIsLog ? "dB" : undefined,
+      yAxisUnit,
       focusShield:     true };
    filterEditorWidget.setEditorState(editorState);
-   filterEditorWidgetKnotsAreLog = scaleIsLog;
+   filterEditorWidgetKnotsAmplScale = amplitudeScale;
    filterEditorWidgetLoaded = true; }
+
+function convertKnotsAmplitudeScale (oldKnots: FunctionCurveEditor.Point[], oldAmplitudeScale: string, newAmplitudeScale: string) : FunctionCurveEditor.Point[] {
+   if (oldAmplitudeScale == newAmplitudeScale) {
+      return oldKnots; }
+   let oldKnotsLin: FunctionCurveEditor.Point[];
+   switch (oldAmplitudeScale) {
+      case "log": {
+         oldKnotsLin = oldKnots.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: DspUtils.convertDbToAmplitude(p.y)}));
+         break; }
+      case "lin": {
+         oldKnotsLin = oldKnots;
+         break; }
+      case "pwr": {
+         oldKnotsLin = oldKnots.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: Math.sqrt(Math.max(0,p.y))}));
+         break; }
+      default: throw new Error("Invalid amplitudeScale."); }
+   switch (newAmplitudeScale) {
+      case "log": {
+         return oldKnotsLin.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: Math.max(-100, DspUtils.convertAmplitudeToDb(Math.max(0, p.y)))})); }
+      case "lin": {
+         return oldKnotsLin; }
+      case "pwr": {
+         return oldKnotsLin.map((p: FunctionCurveEditor.Point) => ({x: p.x, y: p.y ** 2})); }
+      default: throw new Error("Invalid amplitudeScale."); }}
 
 function refreshFilterGui() {
    const filterType = DomUtils.getValue("filterType");
    const isBand = filterType == "BP" || filterType == "BS";
    const isCurve = filterType == "curve";
-   DomUtils.showElement("filterFreq1", !isCurve);
-   DomUtils.showElement("filterFreq2", isBand);
-   DomUtils.showElement("filterSmoothingWidth", !isCurve);
+   DomUtils.showElement("filterFreq1Field", !isCurve);
+   DomUtils.showElement("filterFreq2Field", isBand);
+   DomUtils.showElement("filterSmoothingWidthField", !isCurve);
    DomUtils.setText("filterFreq1Label", isBand ? "Frequency 1:" : "Frequency:");
    DomUtils.showElement("filterViewerFrame", !isCurve);
    const filterEditorWasAlreadyVisible = DomUtils.isElementVisible("filterEditorFrame");
@@ -597,7 +618,12 @@ function refreshMainGui() {
    const specProc = DomUtils.getValue("specProc");
    DomUtils.showElement("filterParms", specProc == "filter");
    DomUtils.showElement("filterParms2", specProc == "filter");
-   DomUtils.showElement("specScalingFactor", specProc == "scaleTime" || specProc == "transpose"); }
+   DomUtils.showElement("specScalingFactorField", specProc == "scaleTime" || specProc == "transpose");
+   const averagingMode = DomUtils.getValue("averagingMode");
+   DomUtils.showElement("averagingWindowFunctionField", averagingMode.startsWith("firLp"));
+   const lpWin2 = averagingMode == "firLpLinLin" || averagingMode == "firLpPwrPwr" || averagingMode == "firLpPwrLog";
+   DomUtils.showElement("averagingWidth2Field", lpWin2);
+   DomUtils.showElement("averagingWindowFunction2Field", lpWin2); }
 
 async function genericPlayButton_click (signal: ArrayLike<number>, sampleRate: number) {
    if (audioPlayer.isPlaying()) {
@@ -642,6 +668,14 @@ async function processUrlParameters() {
    if (audioFileUrl) {
       await loadAudioFileFromUrl(audioFileUrl, f0); }}
 
+function polulateWindowFunctionSelect (elementId: string, defaultWindowFunctionId: string, addNone = false) {
+   const selectElement = <HTMLSelectElement>document.getElementById(elementId)!;
+   for (const d of WindowFunctions.windowFunctionIndex) {
+      const selected = d.id == defaultWindowFunctionId;
+      selectElement.add(new Option(d.name, d.id, selected, selected)); }
+   if (addNone) {
+      selectElement.add(new Option("none", "none")); }}
+
 async function startup() {
    audioPlayer = new InternalAudioPlayer();
    audioPlayer.addEventListener("stateChange", refreshMainGui);
@@ -657,10 +691,9 @@ async function startup() {
    filterEditorWidget         = new FunctionCurveEditor.Widget(filterEditorCanvas);
    outputSpectrumViewerWidget = new FunctionCurveViewer.Widget(outputSpectrumViewerCanvas);
    outputSignalViewerWidget   = new FunctionCurveViewer.Widget(outputSignalViewerCanvas);
-   const windowFunctionSelect = <HTMLSelectElement>document.getElementById("windowFunction")!;
-   for (const d of WindowFunctions.windowFunctionIndex) {
-      const selected = d.id == "rect";
-      windowFunctionSelect.add(new Option(d.name, d.id, selected, selected)); }
+   polulateWindowFunctionSelect("windowFunction", "rect");
+   polulateWindowFunctionSelect("averagingWindowFunction", "blackman", true);
+   polulateWindowFunctionSelect("averagingWindowFunction2", "hann", true);
    DomUtils.addClickEventListener("loadLocalAudioFileButton", loadLocalAudioFileButton_click);
    DomUtils.addClickEventListener("playInputButton", playInputButton_click);
    DomUtils.addClickEventListener("saveInputWavFileButton", saveInputWavFileButton_click);
@@ -677,25 +710,17 @@ async function startup() {
    DomUtils.addChangeEventListener("amplitudeScale", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("maxDisplayFreq", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("averagingMode", refreshSpectrumAndFilterDisplay);
+   DomUtils.addChangeEventListener("averagingMode", refreshMainGui);
    DomUtils.addChangeEventListener("averagingWidth", refreshSpectrumAndFilterDisplay);
+   DomUtils.addChangeEventListener("averagingWidth2", refreshSpectrumAndFilterDisplay);
+   DomUtils.addChangeEventListener("averagingWindowFunction", refreshSpectrumAndFilterDisplay);
+   DomUtils.addChangeEventListener("averagingWindowFunction2", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("specProc", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterType", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterFreq1", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterFreq2", updateSpectralProcessing);
    DomUtils.addChangeEventListener("filterSmoothingWidth", updateSpectralProcessing);
    filterEditorWidget.addEventListener("change", () => catchError(updateSpectralProcessingAsync));
-// DomUtils.restoreValueNum("maxDisplayFreq", 5500);
-// DomUtils.restoreValueNum("averagingWidth", 100);
-// DomUtils.restoreValueNum("filterFreq1", 1000);
-// DomUtils.restoreValueNum("filterFreq2", 2000);
-// DomUtils.restoreValueNum("filterSmoothingWidth", 100);
-// DomUtils.restoreValueNum("outputSampleRate", 44100);
-// DomUtils.addValueNumSaver("maxDisplayFreq");
-// DomUtils.addValueNumSaver("averagingWidth");
-// DomUtils.addValueNumSaver("filterFreq1");
-// DomUtils.addValueNumSaver("filterFreq2");
-// DomUtils.addValueNumSaver("filterSmoothingWidth");
-// DomUtils.addValueNumSaver("outputSampleRate");
    DomUtils.addNumericFieldFormatSwitcher("maxDisplayFreq");
    DomUtils.addNumericFieldFormatSwitcher("filterFreq1");
    DomUtils.addNumericFieldFormatSwitcher("filterFreq2");
@@ -703,7 +728,8 @@ async function startup() {
    refreshFilterGui();
    await processUrlParameters();
    if (inputFileF0 > 0) {                                  // F0 value received in Link from ZHCorpus
-      DomUtils.setValueNum("averagingWidth", inputFileF0); }
+      DomUtils.setValueNum("averagingWidth", inputFileF0);
+      DomUtils.setValueNum("averagingWidth2", inputFileF0 * 2); }
    refreshMainGui(); }
 
 document.addEventListener("DOMContentLoaded", () => catchError(startup));

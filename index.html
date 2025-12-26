@@ -10,13 +10,6 @@
 </head>
 <body>
 
-<script>
- try {
-    eval("(async function() {})"); }
-  catch (e) {
-    document.write('<p style="color: red; font-size: 20px; font-weight: bold;">Sorry, your web browser is outdated and cannot run this application!</p>'); }
-</script>
-
 <h1>SpecFilt - Spectral Filter Tool</h1>
 
 <div class="functionCurveViewerFrame canvasFrame">
@@ -38,30 +31,64 @@
  <div id="inputSignalSampleRate"></div>
 </div>
 
-<div class="parmBlock">
- <div class="parmLine">
+<div class="parmBlock parmBlockContinuationFirst">
+ <div class="parmField">
   <label class="w130" for="windowFunction" title="Window function to apply before FFT.">Window function:</label>
   <select class="w110" id="windowFunction">
   </select>
-  <label class="w130g" for="amplitudeScale" title="Amplitude scale for spectrum and filter curve display.">Amplitude scale:</label>
+ </div>
+ <div class="parmField">
+  <label class="w130" for="amplitudeScale" title="Amplitude scale for spectrum and filter curve display.">Amplitude scale:</label>
   <select class="w110" id="amplitudeScale">
    <option value="log">Logarithmic</option>
    <option value="lin">Linear</option>
+   <option value="pwr">Power</option>
   </select>
-  <label class="w130g" for="maxDisplayFreq" title="Initial maximum frequency for zooming the spectrum display in Hz.">Max display freq.:</label>
+ </div>
+ <div class="parmField">
+  <label class="w130" for="maxDisplayFreq" title="Initial maximum frequency for zooming the spectrum display in Hz.">Max display freq.:</label>
   <input class="w110" id="maxDisplayFreq" type="text" required value="5500">
-  <label class="w130g" for="averagingMode" title="Averaging mode for the smoothed spectrum curve.">Averaging mode:</label>
+ </div>
+</div>
+<div class="parmBlock parmBlockContinuationLast">
+ <div class="parmField">
+  <label class="w130" for="averagingMode" title="Averaging mode for the smoothed spectrum curve.">Averaging mode:</label>
   <select class="w110" id="averagingMode">
    <option value="smaLin">SMA linear - Simple moving average over the linear spectral pressure amplitude values</option>
-   <option value="smaPow">SMA power - Simple moving average over the linear spectral power values</option>
+   <option value="smaPwr">SMA power - Simple moving average over the spectral power amplitude values</option>
    <option value="smaLog">SMA log - Simple moving average over the logarithmic spectral amplitude values</option>
+   <option value="smaPwrLog2" selected>Triple SMA (1x power + 2x log)</option>
    <option value="tmaLin">TMA linear - Triangular moving average over the linear spectral pressure amplitude values</option>
-   <option value="tmaPow">TMA power - Triangular moving average over the linear spectral power values</option>
+   <option value="tmaPwr">TMA power - Triangular moving average over the spectral power amplitude values</option>
    <option value="tmaLog">TMA log - Triangular moving average over the logarithmic spectral amplitude values</option>
-   <option value="smaPowLog2" selected>SMA power + 2x SMA log</option>
+   <option value="firLpLin">FIR LP flter over the linear spectral pressure amplitude values</option>
+   <option value="firLpPwr">FIR LP flter over the spectral power amplitude values</option>
+   <option value="firLpLog">FIR LP flter over the logarithmic spectral amplitude values</option>
+   <option value="firLpLinLin">Dual FIR LP filter (2x linear)</option>
+   <option value="firLpPwrPwr">Dual FIR LP filter (2x power)</option>
+   <option value="firLpPwrLog" selected>Dual FIR LP filter (1x power + 1x log)</option>
+   <option value="specLpLin">Spectral LP filter over the linear spectral pressure amplitude values</option>
+   <option value="specLpPwr">Spectral LP filter over the spectral power amplitude values</option>
+   <option value="specLpLog">Spectral LP filter over the logarithmic spectral amplitude values</option>
   </select>
-  <label class="w130g" for="averagingWidth" title="Averaging bandwidth for the smoothed spectrum curve.">Averag. width [Hz]:</label>
+ </div>
+ <div class="parmField">
+  <label class="w130" for="averagingWidth" title="Averaging bandwidth for the smoothed spectrum curve.">Averag. width [Hz]:</label>
   <input class="w110" id="averagingWidth" type="number" step="any" required value="250">
+ </div>
+ <div class="parmField" id="averagingWindowFunctionField">
+  <label class="w130" for="averagingWindowFunction" title="Window function used for the averaging FIR LP filter.">Averaging window:</label>
+  <select class="w110" id="averagingWindowFunction">
+  </select>
+ </div>
+ <div class="parmField" id="averagingWidth2Field">
+  <label class="w130" for="averagingWidth2" title="Averaging bandwidth for the second filter for the smoothed spectrum curve.">Averag. width 2 [Hz]:</label>
+  <input class="w110" id="averagingWidth2" type="number" step="any" required value="500">
+ </div>
+ <div class="parmField" id="averagingWindowFunction2Field">
+  <label class="w130" for="averagingWindowFunction2" title="Window function used for the the second averaging FIR LP filter.">Averag. window 2:</label>
+  <select class="w110" id="averagingWindowFunction2">
+  </select>
  </div>
 </div>
 
@@ -78,7 +105,7 @@
 </div>
 
 <div class="parmBlock">
- <div class="parmLine">
+ <div class="parmField">
   <label class="w130" for="specProc" title="Spectral processing.">Processing:</label>
   <select class="w110" id="specProc">
    <option value="filter">Filter amplitudes</option>
@@ -88,10 +115,14 @@
    <option value="phasesNeg">Negate phases</option>
    <option value="phasesAlt">Alternate phases</option>
   </select>
-  <label class="w130g" for="specScalingFactor" title="Spectral scaling factor for time or frequency scaling.">Scaling factor:</label>
+ </div>
+ <div class="parmField" id="specScalingFactorField">
+  <label class="w130" for="specScalingFactor" title="Spectral scaling factor for time or frequency scaling.">Scaling factor:</label>
   <input class="w110" id="specScalingFactor" type="number" step="any" value="1" required>
  </div>
- <div id="filterParms" class="parmLine">
+</div>
+<div id="filterParms" class="parmBlock" style="margin-top: 10px">
+ <div class="parmField">
   <label class="w130" for="filterType">Filter type:</label>
   <select class="w110" id="filterType">
    <option value="LP">Low pass</option>
@@ -100,11 +131,17 @@
    <option value="BS">Band stop</option>
    <option value="curve">Curve</option>
   </select>
-  <label class="w130g" id="filterFreq1Label" for="filterFreq1">Frequency 1:</label>
+ </div>
+ <div class="parmField" id="filterFreq1Field">
+  <label class="w130" id="filterFreq1Label" for="filterFreq1">Frequency 1:</label>
   <input class="w110" id="filterFreq1" type="text" required value="1000">
-  <label class="w130g" for="filterFreq2">Frequency 2:</label>
+ </div>
+ <div class="parmField" id="filterFreq2Field">
+  <label class="w130" for="filterFreq2">Frequency 2:</label>
   <input class="w110" id="filterFreq2" type="text" required value="2000">
-  <label class="w130g" for="filterSmoothingWidth" title="The distance between the start of the smoothing and the -6dB point.">Smoothing [Hz]:</label>
+ </div>
+ <div class="parmField" id="filterSmoothingWidthField">
+  <label class="w130" for="filterSmoothingWidth" title="The distance between the start of the smoothing and the -6dB point.">Smoothing [Hz]:</label>
   <input class="w110" id="filterSmoothingWidth" type="number" step="any" required value="100">
  </div>
 </div>
@@ -134,10 +171,12 @@
 </div>
 
 <div class="parmBlock">
- <div class="parmLine">
+ <div class="parmField">
   <label class="w130" for="outputSampleRate" title="Sample rate for synthesizing the output signal.">Sample rate:</label>
   <input class="w110" id="outputSampleRate" type="text" required value="44100">
-  <label class="w130g" for="outputStretchFactor" title="Factor to stretch (if &gt; 1) or squeeze (if &lt; 1) the output signal.">Stretch factor:</label>
+ </div>
+ <div class="parmField">
+  <label class="w130" for="outputStretchFactor" title="Factor to stretch (if &gt; 1) or squeeze (if &lt; 1) the output signal.">Stretch factor:</label>
   <input class="w110" id="outputStretchFactor" type="number" step="any" value="1" required>
  </div>
 </div>
