@@ -668,7 +668,7 @@ async function processUrlParameters() {
    if (audioFileUrl) {
       await loadAudioFileFromUrl(audioFileUrl, f0); }}
 
-function polulateWindowFunctionSelect (elementId: string, defaultWindowFunctionId: string, addNone = false) {
+function populateWindowFunctionSelect (elementId: string, defaultWindowFunctionId: string, addNone = false) {
    const selectElement = <HTMLSelectElement>document.getElementById(elementId)!;
    for (const d of WindowFunctions.windowFunctionIndex) {
       const selected = d.id == defaultWindowFunctionId;
@@ -691,9 +691,9 @@ async function startup() {
    filterEditorWidget         = new FunctionCurveEditor.Widget(filterEditorCanvas);
    outputSpectrumViewerWidget = new FunctionCurveViewer.Widget(outputSpectrumViewerCanvas);
    outputSignalViewerWidget   = new FunctionCurveViewer.Widget(outputSignalViewerCanvas);
-   polulateWindowFunctionSelect("windowFunction", "rect");
-   polulateWindowFunctionSelect("averagingWindowFunction", "blackman", true);
-   polulateWindowFunctionSelect("averagingWindowFunction2", "hann", true);
+   populateWindowFunctionSelect("windowFunction", "rect");
+   populateWindowFunctionSelect("averagingWindowFunction", "blackman", true);
+   populateWindowFunctionSelect("averagingWindowFunction2", "hann", true);
    DomUtils.addClickEventListener("loadLocalAudioFileButton", loadLocalAudioFileButton_click);
    DomUtils.addClickEventListener("playInputButton", playInputButton_click);
    DomUtils.addClickEventListener("saveInputWavFileButton", saveInputWavFileButton_click);
