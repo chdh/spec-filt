@@ -15,14 +15,9 @@ export function getInputElement (elementOrId: HTMLInputElement | string) : HTMLI
    return <HTMLInputElement>getElement(elementOrId); }
 
 // Shows or hides a DOM element.
-// If the element is an input element with an associated label element, the label element is also affected.
 export function showElement (elementOrId: HTMLElement | string, visible = true) {
    const e = getElement(elementOrId);
-   e.classList.toggle("hidden", !visible);
-   const labels = (<HTMLInputElement>e).labels;
-   if (labels) {
-      for (const labelElement of labels) {
-         labelElement.classList.toggle("hidden", !visible); }}}
+   e.classList.toggle("hidden", !visible); }
 
 export function isElementVisible (elementOrId: HTMLElement | string) : boolean {
    const e = getElement(elementOrId);
@@ -86,31 +81,6 @@ export function setValueNum (elementOrId: HTMLInputElement | string, n: number |
       return; }
    e.value = formatNumber(n); }
 
-export function saveValueNum (id: string) {
-   try {
-      const value = getValueNumOpt(id);
-      if (value == undefined) {
-         return; }
-      localStorage.setItem(id, String(value)); }
-    catch (e) {
-      console.log(e); }}
-
-export function addValueNumSaver (id: string) {
-   const e = getInputElement(id);
-   e.addEventListener("change", () => saveValueNum(id)); }
-
-export function restoreValueNum (id: string, defaultValue: number) {
-   try {
-      const s = localStorage.getItem(id);
-      const v = Number(s);
-      if (!s || !isFinite(v)) {
-         setValueNum(id, defaultValue);
-         return; }
-      setValueNum(id, v); }
-    catch (e) {
-      console.log(e);
-      setValueNum(id, defaultValue); }}
-
 export function addNumericFieldFormatSwitcher (elementOrId: HTMLInputElement | string) {
    const e = getInputElement(elementOrId);
    e.addEventListener("focusin", () => {
@@ -151,3 +121,35 @@ export async function promptNumber (titleText: string, promptText: string, defau
       await DialogManager.showMsg({titleText: "Error", msgText: "Invalid number: " + s});
       return; }
    return n; }
+
+//--- Field info ---------------------------------------------------------------
+
+let visibleInfoTextElement: HTMLDivElement | undefined = undefined;
+
+function prepareFieldInfo2 (fieldElement: HTMLElement) {
+   const infoButtonElement = document.createElement("div");
+   infoButtonElement.className = "fieldInfoButton";
+   fieldElement.appendChild(infoButtonElement);
+   const infoTextElement = document.createElement("div");
+   const infoText = fieldElement.dataset.info!;
+   infoTextElement.innerHTML = infoText;
+   infoTextElement.className = "fieldInfoText hidden";
+   fieldElement.appendChild(infoTextElement);
+   infoButtonElement.addEventListener("click", (_event: Event) => {
+      if (visibleInfoTextElement && visibleInfoTextElement != infoTextElement) {
+         visibleInfoTextElement.classList.add("hidden"); }
+      const hidden = infoTextElement.classList.toggle("hidden");
+      visibleInfoTextElement = hidden ? undefined : infoTextElement; }); }
+
+export function prepareFieldInfo() {
+   for (const fieldElement of <NodeListOf<HTMLElement>>document.querySelectorAll("div[data-info]")) {
+      prepareFieldInfo2(fieldElement); }
+   document.addEventListener("click", (event: Event) => {
+      if (!visibleInfoTextElement || !(event.target instanceof Node)) {
+         return; }
+      const fieldElement = <HTMLElement>visibleInfoTextElement.parentNode;
+      if (fieldElement?.contains(event.target)) {
+         return; }
+      // Handle a click somewhere outside of the current field and it's sub-elements.
+      visibleInfoTextElement.classList.add("hidden");
+      visibleInfoTextElement = undefined; }); }

@@ -32,28 +32,28 @@
 </div>
 
 <div class="parmBlock parmBlockContinuationFirst">
- <div class="parmField">
-  <label class="w130" for="windowFunction" title="Window function to apply before FFT.">Window function:</label>
-  <select class="w110" id="windowFunction">
+ <div class="parmField" data-info="Window function to apply before FFT.">
+  <label class="w-lbl" for="windowFunction">Window function:</label>
+  <select class="w-inp" id="windowFunction">
   </select>
  </div>
- <div class="parmField">
-  <label class="w130" for="amplitudeScale" title="Amplitude scale for spectrum and filter curve display.">Amplitude scale:</label>
-  <select class="w110" id="amplitudeScale">
+ <div class="parmField" data-info="Amplitude scale for spectrum and filter curve display.">
+  <label class="w-lbl" for="amplitudeScale">Amplitude scale:</label>
+  <select class="w-inp" id="amplitudeScale">
    <option value="log">Logarithmic</option>
    <option value="lin">Linear</option>
    <option value="pwr">Power</option>
   </select>
  </div>
- <div class="parmField">
-  <label class="w130" for="maxDisplayFreq" title="Initial maximum frequency for displaying the spectrum in Hz.">Max display fr. [Hz]:</label>
-  <input class="w110" id="maxDisplayFreq" type="text" required value="5500">
+ <div class="parmField" data-info="Initial maximum frequency for displaying the spectrum in Hz.">
+  <label class="w-lbl" for="maxDisplayFreq">Max display fr. [Hz]:</label>
+  <input class="w-inp" id="maxDisplayFreq" type="text" required value="5500">
  </div>
 </div>
 <div class="parmBlock parmBlockContinuationLast">
- <div class="parmField">
-  <label class="w130" for="averagingMode" title="Averaging mode for the smoothed spectrum curve.">Averaging mode:</label>
-  <select class="w110" id="averagingMode">
+ <div class="parmField" data-info="Averaging mode for the smoothed spectrum curve.">
+  <label class="w-lbl" for="averagingMode">Averaging mode:</label>
+  <select class="w-inp" id="averagingMode">
    <option value="smaLin">SMA linear - Simple moving average over the linear spectral pressure amplitude values</option>
    <option value="smaPwr">SMA power - Simple moving average over the spectral power amplitude values</option>
    <option value="smaLog">SMA log - Simple moving average over the logarithmic spectral amplitude values</option>
@@ -72,22 +72,22 @@
    <option value="specLpLog">Spectral LP filter over the logarithmic spectral amplitude values</option>
   </select>
  </div>
- <div class="parmField">
-  <label class="w130" for="averagingWidth" title="Averaging bandwidth for the smoothed spectrum curve.">Averag. width [Hz]:</label>
-  <input class="w110" id="averagingWidth" type="number" step="any" required value="250">
+ <div class="parmField" data-info="Averaging bandwidth for the smoothed spectrum curve.">
+  <label class="w-lbl" for="averagingWidth">Averag. width [Hz]:</label>
+  <input class="w-inp" id="averagingWidth" type="number" step="any" required value="250">
  </div>
- <div class="parmField" id="averagingWindowFunctionField">
-  <label class="w130" for="averagingWindowFunction" title="Window function used for the averaging FIR LP filter.">Averaging window:</label>
-  <select class="w110" id="averagingWindowFunction">
+ <div class="parmField" id="averagingWindowFunctionField" data-info="Window function used for the averaging FIR LP filter.">
+  <label class="w-lbl" for="averagingWindowFunction">Averaging window:</label>
+  <select class="w-inp" id="averagingWindowFunction">
   </select>
  </div>
- <div class="parmField" id="averagingWidth2Field">
-  <label class="w130" for="averagingWidth2" title="Averaging bandwidth for the second filter for the smoothed spectrum curve.">Averag. width 2 [Hz]:</label>
-  <input class="w110" id="averagingWidth2" type="number" step="any" required value="500">
+ <div class="parmField" id="averagingWidth2Field" data-info="Averaging bandwidth for the second filter for the smoothed spectrum curve.">
+  <label class="w-lbl" for="averagingWidth2">Averag. width 2 [Hz]:</label>
+  <input class="w-inp" id="averagingWidth2" type="number" step="any" required value="500">
  </div>
- <div class="parmField" id="averagingWindowFunction2Field">
-  <label class="w130" for="averagingWindowFunction2" title="Window function used for the the second averaging FIR LP filter.">Averag. window 2:</label>
-  <select class="w110" id="averagingWindowFunction2">
+ <div class="parmField" id="averagingWindowFunction2Field" data-info="Window function used for the the second averaging FIR LP filter.">
+  <label class="w-lbl" for="averagingWindowFunction2">Averag. window 2:</label>
+  <select class="w-inp" id="averagingWindowFunction2">
   </select>
  </div>
 </div>
@@ -105,9 +105,9 @@
 </div>
 
 <div class="parmBlock">
- <div class="parmField">
-  <label class="w130" for="specProc" title="Spectral processing.">Processing:</label>
-  <select class="w110" id="specProc">
+ <div class="parmField" data-info="Spectral processing.">
+  <label class="w-lbl" for="specProc">Processing:</label>
+  <select class="w-inp" id="specProc">
    <option value="filter">Filter amplitudes</option>
    <!-- <option value="scaleTime">Scale time</option> -->
    <!-- <option value="transpose">Transpose</option>  -->
@@ -116,15 +116,15 @@
    <option value="phasesAlt">Alternate phases</option>
   </select>
  </div>
- <div class="parmField" id="specScalingFactorField">
-  <label class="w130" for="specScalingFactor" title="Spectral scaling factor for time or frequency scaling.">Scaling factor:</label>
-  <input class="w110" id="specScalingFactor" type="number" step="any" value="1" required>
+ <div class="parmField" id="specScalingFactorField" data-info="Spectral scaling factor for time or frequency scaling.">
+  <label class="w-lbl" for="specScalingFactor">Scaling factor:</label>
+  <input class="w-inp" id="specScalingFactor" type="number" step="any" value="1" required>
  </div>
 </div>
 <div id="filterParms" class="parmBlock" style="margin-top: 10px">
  <div class="parmField">
-  <label class="w130" for="filterType">Filter type:</label>
-  <select class="w110" id="filterType">
+  <label class="w-lbl" for="filterType">Filter type:</label>
+  <select class="w-inp" id="filterType">
    <option value="LP">Low pass</option>
    <option value="HP">High pass</option>
    <option value="BP">Band pass</option>
@@ -133,16 +133,16 @@
   </select>
  </div>
  <div class="parmField" id="filterFreq1Field">
-  <label class="w130" id="filterFreq1Label" for="filterFreq1">Frequency 1:</label>
-  <input class="w110" id="filterFreq1" type="text" required value="1000">
+  <label class="w-lbl" id="filterFreq1Label" for="filterFreq1">Frequency 1:</label>
+  <input class="w-inp" id="filterFreq1" type="text" required value="1000">
  </div>
  <div class="parmField" id="filterFreq2Field">
-  <label class="w130" for="filterFreq2">Frequency 2:</label>
-  <input class="w110" id="filterFreq2" type="text" required value="2000">
+  <label class="w-lbl" for="filterFreq2">Frequency 2:</label>
+  <input class="w-inp" id="filterFreq2" type="text" required value="2000">
  </div>
- <div class="parmField" id="filterSmoothingWidthField">
-  <label class="w130" for="filterSmoothingWidth" title="The distance between the start of the smoothing and the -6dB point.">Smoothing [Hz]:</label>
-  <input class="w110" id="filterSmoothingWidth" type="number" step="any" required value="100">
+ <div class="parmField" id="filterSmoothingWidthField" data-info="The distance between the start of the smoothing and the -6dB point.">
+  <label class="w-lbl" for="filterSmoothingWidth">Smoothing [Hz]:</label>
+  <input class="w-inp" id="filterSmoothingWidth" type="number" step="any" required value="100">
  </div>
 </div>
 
@@ -171,13 +171,13 @@
 </div>
 
 <div class="parmBlock">
- <div class="parmField">
-  <label class="w130" for="outputSampleRate" title="Sample rate for synthesizing the output signal.">Sample rate:</label>
-  <input class="w110" id="outputSampleRate" type="text" required value="44100">
+ <div class="parmField" data-info="Sample rate for synthesizing the output signal.">
+  <label class="w-lbl" for="outputSampleRate">Sample rate:</label>
+  <input class="w-inp" id="outputSampleRate" type="text" required value="44100">
  </div>
- <div class="parmField">
-  <label class="w130" for="outputStretchFactor" title="Factor to stretch (if &gt; 1) or squeeze (if &lt; 1) the output signal.">Stretch factor:</label>
-  <input class="w110" id="outputStretchFactor" type="number" step="any" value="1" required>
+ <div class="parmField" data-info="Factor to stretch (if &gt; 1) or squeeze (if &lt; 1) the output signal.">
+  <label class="w-lbl" for="outputStretchFactor">Stretch factor:</label>
+  <input class="w-inp" id="outputStretchFactor" type="number" step="any" value="1" required>
  </div>
 </div>
 

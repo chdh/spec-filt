@@ -730,6 +730,7 @@ async function startup() {
    if (inputFileF0 > 0) {                                  // F0 value received in Link from ZHCorpus
       DomUtils.setValueNum("averagingWidth", inputFileF0);
       DomUtils.setValueNum("averagingWidth2", inputFileF0 * 2); }
-   refreshMainGui(); }
+   refreshMainGui();
+   DomUtils.prepareFieldInfo(); }
 
 document.addEventListener("DOMContentLoaded", () => catchError(startup));

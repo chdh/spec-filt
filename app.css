@@ -29,7 +29,7 @@ a:hover {
    color: #07C;
    cursor: pointer; }
 .miniPseudoButton {
-   font-size: 13px; }
+   font-size: 12px; }
 
 div.footer {
    margin-top: 15px;
@@ -71,7 +71,7 @@ select:focus,
    display: flex;
    flex-wrap: wrap;
    align-items: baseline;
-   column-gap: 20px;
+   column-gap: 25px;
    row-gap: 8px; }
 .parmBlockContinuationFirst {
    margin-bottom: 0px; }
@@ -79,6 +79,7 @@ select:focus,
    margin-top: 8px; }
 
 .parmField {
+   position: relative;
    display: flex;
    align-items: baseline; }
 
@@ -90,66 +91,54 @@ div.parmHeading2 {
    font-size: 13px;
    font-weight: bold; }
 
-label[title],
-div[title] {
-   text-decoration: underline dotted #aaa;
-   text-underline-position: under; }
+.fieldInfoButton {
+   position: absolute;
+   right: -18px;
+   top: -3px;
+   width: 12px;
+   height: 12px;
+   box-sizing: content-box;
+   padding: 4px;
+   z-index: 1;
+   cursor: pointer;
+   background-repeat: no-repeat;
+   background-position: center;
+   background-size: 12px 12px;
+   background-image: url('data:image/svg+xml,<svg version="1.1" viewBox="2 2 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M10 9.25 a.75.75 0 0 1 .75.75 v3.333 a.75.75 0 0 1-1.5 0 V10 a.75.75 0 0 1 .75-.75 M10 5.833 a.959.959 0 1 1-.001 1.917 A.959.959 0 0 1 10 5.833" fill="%2305c"/><path d="m10 2.085a7.915 7.915 0 1 1 0 15.83 7.915 7.915 0 0 1 0-15.83m0 1.33a6.585 6.585 0 1 0 0 13.17 6.585 6.585 0 0 0 0-13.17" clip-rule="evenodd" fill="%2305c" fill-rule="evenodd"/></svg>'); }
+
+.fieldInfoText {
+   position: absolute;
+   top: 30px;
+   left: -13px;
+   min-width: 273px;
+   z-index: 2;
+   border: 1px solid #AAAAAA;
+   border-radius: 10px;
+   background-color: #FFFFDD;
+   padding: 10px 12px; }
 
 div.actionButtons {
    margin-top: 15px;
    display: flex;
    flex-wrap: wrap;
    align-items: center;
-   column-gap: 20px;
+   column-gap: 25px;
    row-gap: 10px; }
 
-div.actionButtons button {
+div.actionButtons > button {
    width: 110px;
    padding: 4px 0px; }
 
-div.actionButtons label {
-   margin-right: 5px; }
 
 .miniPseudoButton {
    color: #07C;
    cursor: pointer;
    font-size: 12px; }
 
-.w50r {
-   width: 50px;
-   text-align: right; }
-.w60r {
-   width: 60px;
-   text-align: right; }
-.w80r {
-   width: 80px;
-   text-align: right; }
-.w100r {
-   width: 100px;
-   text-align: right; }
-.w110 {
+.w-inp {
    width: 110px; }
-.w120 {
-   width: 120px; }
-.w120g {
-   width: 120px;
-   margin-left: 20px; }
-.w130 {
-   width: 130px; }
-.w130g {
-   width: 130px;
-   margin-left: 20px; }
-.w140r {
-   width: 140px;
-   text-align: right; }
-.w160r {
-   width: 160px;
-   text-align: right; }
-.w200 {
-   width: 200px; }
-.w250r {
-   width: 250px;
-   text-align: right; }
+.w-lbl {
+   width: 135px; }
 
 /*--- Function curve viewers and editor --------------------------------------*/
 
