@@ -1,23 +1,20 @@
 {
    "compilerOptions": {
       "allowUnreachableCode": false,
-      "alwaysStrict": true,
-      "forceConsistentCasingInFileNames": true,
-      "lib": ["ES2020", "DOM", "DOM.Iterable"],
+      "lib": ["ES2020", "DOM"],
       "module": "ES2020",
       "moduleResolution": "bundler",
       "noFallthroughCasesInSwitch": true,
-      "noImplicitAny": true,
       "noImplicitOverride": true,
       "noImplicitReturns": true,
-      "noImplicitThis": true,
       "noUnusedLocals": true,
       "noUnusedParameters": true,
       "outDir": "tempBuild",
       "removeComments": true,
       "rewriteRelativeImportExtensions": true,
-      "strictFunctionTypes": true,
-      "strictNullChecks": true,
+      "rootDir": "src",
+      "strict": true,                            // Only necessary as long as TS-ESLint does not support TS 6.
+      "strictPropertyInitialization": false,
       "target": "ES2020"
    },
    "include": ["src"]

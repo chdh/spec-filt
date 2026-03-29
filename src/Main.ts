@@ -1,9 +1,3 @@
-import * as Utils from "./Utils.ts";
-import {catchError, formatNumber, AsyncCallGate} from "./Utils.ts";
-import InternalAudioPlayer from "./InternalAudioPlayer.js";
-import * as SpecAverage from "./SpecAverage.ts";
-import * as DomUtils from "./DomUtils.ts";
-import * as AudioUtils from "./AudioUtils.ts";
 import * as WavFileEncoder from "wav-file-encoder";
 import * as DialogManager from "dialog-manager";
 import * as FunctionCurveViewer from "function-curve-viewer";
@@ -16,6 +10,13 @@ import * as FirFilterWin from "dsp-collection/filter/FirFilterWin";
 import * as SpecFilt from "dsp-collection/filter/SpecFilt";
 import {FilterCurveFunction} from "dsp-collection/filter/SpecFilt";
 import ComplexArray from "dsp-collection/math/ComplexArray";
+
+import * as Utils from "./Utils.ts";
+import {catchError, formatNumber, AsyncCallGate} from "./Utils.ts";
+import InternalAudioPlayer from "./InternalAudioPlayer.ts";
+import * as SpecAverage from "./SpecAverage.ts";
+import * as DomUtils from "./DomUtils.ts";
+import * as AudioUtils from "./AudioUtils.ts";
 
 var audioPlayer:                       InternalAudioPlayer;
 var spectrumCurveStepWidth:            number = 50;                  // step width in Hz for spectrum curve frequency coordinate points that will be copied to clipboard
@@ -77,6 +78,9 @@ function loadSignalViewer (widget: FunctionCurveViewer.Widget, signal: ArrayLike
       focusShield:      true,
       copyEventHandler: signalViewer_clipboardCopyEventHandler };
    widget.setViewerState(viewerState); }
+
+function loadInputSignalViewer() {
+   loadSignalViewer(inputSignalViewerWidget, inputSignal, inputSampleRate); }
 
 function inputSignalViewer_segmentChange() {
    const vState = inputSignalViewerWidget.getViewerState();
@@ -170,7 +174,7 @@ function genAmplitudeCurveDataString() {
 
 async function copyAmplitudeCurveButton_click() {
    if (!inputSignalValid) {
-      return; }
+      throw new Error("No input signal."); }
    const newStepWidth = await DomUtils.promptNumber("Copy amplitude curve coordinates to clipboard", "Step width [ms]", amplitudeCurveStepWidthMs);
    if (!newStepWidth) {
       return; }
@@ -185,6 +189,30 @@ function signalViewer_clipboardCopyEventHandler (event: ClipboardEvent) {
    event.preventDefault();
    const s = genAmplitudeCurveDataString();
    event.clipboardData.setData("text", s); }
+
+//--- Input signal trimming functions ------------------------------------------
+
+function trimToSelectionButton_click() {
+   if (!inputSignalValid) {
+      throw new Error("No input signal."); }
+   if (isInputSignalWhole()) {
+      throw new Error("No input signal selection."); }
+   inputSignal = inputSignal.subarray(inputSignalStart, inputSignalEnd);
+   inputSignalStart = 0;
+   inputSignalEnd = inputSignal.length;
+   loadInputSignalViewer(); }
+
+function removeDcOffsetButton_click() {
+   if (!inputSignalValid) {
+      throw new Error("No input signal."); }
+   inputSignal = AudioUtils.removeDcOffset(inputSignal);
+   loadInputSignalViewer(); }
+
+function normalizeRmsButton_click() {
+   if (!inputSignalValid) {
+      throw new Error("No input signal."); }
+   inputSignal = AudioUtils.normalizeSignalLevel(inputSignal, 0.25, 0.99);
+   loadInputSignalViewer(); }
 
 //--- Spectrum viewer ----------------------------------------------------------
 
@@ -270,7 +298,7 @@ async function loadAudioFileData (fileData: ArrayBuffer, fileName: string, f0: n
    inputFileName = fileName;
    inputFileF0 = f0;
    inputSignalValid = true;
-   loadSignalViewer(inputSignalViewerWidget, inputSignal, inputSampleRate);
+   loadInputSignalViewer();
    setInputSignalInfo();
    inputSpectrumValid = false;
    outputSpectrumValid = false;
@@ -706,6 +734,9 @@ async function startup() {
    DomUtils.addClickEventListener("functionCurveViewerHelpButton", functionCurveViewerHelpButton_click);
    DomUtils.addClickEventListener("functionCurveEditorHelpButton", functionCurveEditorHelpButton_click);
    DomUtils.addClickEventListener("copyAmplitudeCurveButton", copyAmplitudeCurveButton_click);
+   DomUtils.addClickEventListener("trimToSelectionButton", trimToSelectionButton_click);
+   DomUtils.addClickEventListener("removeDcOffsetButton", removeDcOffsetButton_click);
+   DomUtils.addClickEventListener("normalizeRmsButton", normalizeRmsButton_click);
    inputSignalViewerWidget.addEventListener("segmentchange", () => catchError(inputSignalViewer_segmentChange));
    DomUtils.addChangeEventListener("amplitudeScale", refreshSpectrumAndFilterDisplay);
    DomUtils.addChangeEventListener("maxDisplayFreq", refreshSpectrumAndFilterDisplay);

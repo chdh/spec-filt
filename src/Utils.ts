@@ -69,7 +69,7 @@ async function openSaveAsDialog_new (data: ArrayBuffer, fileName: string, mimeTy
    try {
       fileHandle = await (<any>window).showSaveFilePicker(pickerOpts); }
     catch (e) {
-      if (e.name == "AbortError") {
+      if (e instanceof Error && e.name == "AbortError") {
          return; }
       throw e; }
    const stream /* : FileSystemWritableFileStream */ = await (<any>fileHandle).createWritable();
